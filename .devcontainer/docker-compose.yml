@@ -1,0 +1,46 @@
+services:
+  devcontainer:
+    build: 
+      context: .
+      dockerfile: Dockerfile
+      args:
+        USER_SHELL: ${SHELL}
+    volumes:
+      # Mount the parent of the project to the workspaces directory so the
+      # devcontainer can "see" sibling projects at /workspaces/*.  This provides
+      # less isolation (e.g. when running claude in yolo mode), but is useful
+      # when doing things like running deploy.sh in the cloudops repo to
+      # manually deploy another project.
+      #
+      - ../..:/workspaces:cached
+      # Alternative for full project isolation, also see devcontainer.json:workspaceFolder
+      # - ..:/workspace:cached
+
+      # Mount the home directory to a volume to preserve terminal history across
+      # rebuilds.  Safe to comment out to have a fresh slate each rebuild.  Note
+      # that when docker mounts to a new empty volume, it copies files from the
+      # container's mount point (/home/vscode) into the volume.  Thus to pick up
+      # any changes you make to the Dockerfile that affect the contents of the
+      # home directory, you will have to delete the volume/container and rebuild
+      #
+      - home_directory:/home/vscode
+    command: sleep infinity
+    environment:
+      AWS_PROFILE: neurometric
+      EDITOR: code -w
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
+      AWS_SSO_ROLE: ${AWS_SSO_ROLE:-PowerUserAccess}
+
+    # Setting VAR in project_root/.devcontaner/.env allows referencing it in this file with ${VAR}
+    # Setting VAR in project_root/.env allows referencing VAR in this container's runtime environment,
+    # e.g. to set vars above in `environment:` vars needed for your terminal usage and application
+    # The precedence of env_files are top-down, so VARs in .env win
+    #
+    env_file:
+      - path: ../.env.example
+        required: false # (optional, ignored if missing)
+      - path: ../.env
+        required: false # (optional, ignored if missing)
+
+volumes:
+  home_directory:

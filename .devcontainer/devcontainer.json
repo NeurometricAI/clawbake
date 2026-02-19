@@ -1,0 +1,52 @@
+{
+    "dockerComposeFile": [
+        "docker-compose.yml",
+        // "docker-compose-postgresql.yml"
+    ],
+
+    "service": "devcontainer",
+    "workspaceFolder": "/workspaces/${localWorkspaceFolderBasename}",
+    // Alternative for full project isolation, also see docker-compose.yml:volumes
+    // "workspaceFolder": "/workspace",
+
+    "features": {
+        // Use a isolated Docker inside the container, remove the docker.sock mount below
+        // "ghcr.io/devcontainers/features/docker-in-docker:2": {}
+        // Use a docker binary inside the container to access the host's docker, keep the docker.sock mount below
+        "ghcr.io/devcontainers/features/docker-outside-of-docker:1": {}
+    },
+
+    "initializeCommand": {
+        "custom-commands": ["/bin/bash", "./.devcontainer/scripts/custom-commands.sh", "init"],
+        // On macos, extracts host anthropic key from Keychain and places in .devcontainer/.env for use by docker-compose.yml, and thus being set in environment
+        "extract-anthropic-key": ["/bin/bash", "./.devcontainer/scripts/extract-anthropic-key.sh"]
+    },
+
+    "postCreateCommand": {
+		"init-claude-json": "cp ~/.claude.json.host ~/.claude.json",
+        "init-aws-cli": "mkdir -p ~/.aws && cat ${containerWorkspaceFolder}/.devcontainer/config/aws-cli-config.ini | envsubst > ~/.aws/config",
+        "custom-commands": ["/bin/bash", "${containerWorkspaceFolder}/.devcontainer/scripts/custom-commands.sh", "run", "postCreateCommand"],
+        "init-mise": ["/bin/bash", "${containerWorkspaceFolder}/.devcontainer/scripts/init-mise.sh"]
+    },
+
+    "postAttachCommand": {
+        "custom-commands": ["/bin/bash", "${containerWorkspaceFolder}/.devcontainer/scripts/custom-commands.sh", "run", "postAttachCommand"]
+    },
+
+    "mounts": [
+        // Gives the docker inside the devcontainer access to the host docker
+        "source=/var/run/docker.sock,target=/var/run/docker.sock,type=bind",
+        // Link user's claude config into this project for consistency across projects
+        "source=${localEnv:HOME}/.claude,target=/home/vscode/.claude,type=bind",
+        // We need a ~/.claude.json to avoid having to login within container,
+        // but it gets corrupted, so mount and make a copy on create above
+	    "source=${localEnv:HOME}/.claude.json,target=/home/vscode/.claude.json.host,type=bind"
+    ],
+
+    "customizations": {
+        "vscode": {
+            "extensions": [
+            ]
+        }
+    }
+}
