@@ -1,0 +1,54 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "clawbake.fullname" . }}-operator
+  labels:
+    {{- include "clawbake.labels" . | nindent 4 }}
+    app.kubernetes.io/component: operator
+spec:
+  replicas: {{ .Values.operator.replicas }}
+  selector:
+    matchLabels:
+      {{- include "clawbake.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: operator
+  template:
+    metadata:
+      labels:
+        {{- include "clawbake.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: operator
+    spec:
+      serviceAccountName: {{ include "clawbake.fullname" . }}-operator
+      containers:
+        - name: operator
+          image: "{{ .Values.operator.image.repository }}:{{ .Values.operator.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.operator.image.pullPolicy }}
+          args:
+            - -leader-elect=true
+          env:
+            - name: INGRESS_DOMAIN
+              valueFrom:
+                configMapKeyRef:
+                  name: {{ include "clawbake.fullname" . }}
+                  key: ingress-domain
+            - name: INGRESS_SCHEME
+              valueFrom:
+                configMapKeyRef:
+                  name: {{ include "clawbake.fullname" . }}
+                  key: ingress-scheme
+            - name: INGRESS_PORT
+              valueFrom:
+                configMapKeyRef:
+                  name: {{ include "clawbake.fullname" . }}
+                  key: ingress-port
+            - name: INSTANCE_DEFAULT_IMAGE
+              valueFrom:
+                configMapKeyRef:
+                  name: {{ include "clawbake.fullname" . }}
+                  key: instance-default-image
+            - name: ALLOW_INSECURE_CONTROL_UI
+              valueFrom:
+                configMapKeyRef:
+                  name: {{ include "clawbake.fullname" . }}
+                  key: instance-allow-insecure-control-ui
+          resources:
+            {{- toYaml .Values.operator.resources | nindent 12 }}

@@ -1,0 +1,73 @@
+.login-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 80vh;
+}
+
+.login-container article {
+    max-width: 400px;
+    text-align: center;
+}
+
+.dashboard-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+}
+
+.dashboard-header h1 {
+    margin-bottom: 0;
+}
+
+.instance-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.instance-header h1,
+.instance-header h3 {
+    margin-bottom: 0;
+}
+
+.badge {
+    display: inline-block;
+    padding: 0.25rem 0.75rem;
+    border-radius: 1rem;
+    font-size: 0.85rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.025em;
+}
+
+.badge-running {
+    background-color: #2ecc40;
+    color: #fff;
+}
+
+.badge-pending {
+    background-color: #ffdc00;
+    color: #333;
+}
+
+.badge-failed {
+    background-color: #ff4136;
+    color: #fff;
+}
+
+.badge-terminating {
+    background-color: #ff851b;
+    color: #fff;
+}
+
+.badge-unknown {
+    background-color: #aaa;
+    color: #fff;
+}
+
+article footer {
+    display: flex;
+    gap: 0.5rem;
+}

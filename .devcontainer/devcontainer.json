@@ -1,7 +1,7 @@
 {
     "dockerComposeFile": [
         "docker-compose.yml",
-        // "docker-compose-postgresql.yml"
+        "docker-compose-postgresql.yml"
     ],
 
     "service": "devcontainer",
@@ -43,8 +43,28 @@
 	    "source=${localEnv:HOME}/.claude.json,target=/home/vscode/.claude.json.host,type=bind"
     ],
 
+    // Only forward 8081 (direct server). Port 8080 is handled by k3d's Docker
+    // port mapping (--port "8080:80@loadbalancer") and must NOT be forwarded here
+    // or VS Code will intercept the connection before it reaches the k3d LB.
+    "forwardPorts": [8081],
+    "portsAttributes": {
+        "8080": {
+            "label": "Clawbake (k3d)",
+            "onAutoForward": "ignore"
+        },
+        "8081": {
+            "label": "Clawbake (local)",
+            "onAutoForward": "notify"
+        }
+    },
+    "otherPortsAttributes": {
+        "onAutoForward": "ignore"
+    },
+
     "customizations": {
         "vscode": {
+            "settings": {
+            },
             "extensions": [
             ]
         }

@@ -1,0 +1,27 @@
+package templates
+
+templ CreateForm() {
+	@CreateFormWithError("")
+}
+
+templ CreateFormWithError(errMsg string) {
+	<article>
+		<form hx-post="/ui/instances" hx-target="#create-form" hx-swap="innerHTML">
+			if errMsg != "" {
+				<p style="color:var(--pico-del-color)">{ errMsg }</p>
+			}
+			<label>
+				Instance Name
+				<input type="text" name="displayName" placeholder="My Instance" required/>
+			</label>
+			<label>
+				Image (optional, uses default if empty)
+				<input type="text" name="image" placeholder=""/>
+			</label>
+			<fieldset role="group">
+				<button type="submit">Create</button>
+				<button type="button" class="secondary" onclick="document.getElementById('create-form').innerHTML=''">Cancel</button>
+			</fieldset>
+		</form>
+	</article>
+}

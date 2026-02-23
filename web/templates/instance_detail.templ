@@ -1,0 +1,107 @@
+package templates
+
+import (
+	v1alpha1 "github.com/clawbake/clawbake/api/v1alpha1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+)
+
+templ conditionRow(cond metav1.Condition) {
+	<tr>
+		<td>{ cond.Type }</td>
+		<td>{ conditionStatus(cond.Status) }</td>
+		<td>{ cond.Reason }</td>
+		<td>{ cond.Message }</td>
+	</tr>
+}
+
+templ InstanceDetail(instance v1alpha1.ClawInstance, isAdmin bool) {
+	@Layout(instance.Spec.DisplayName, isAdmin) {
+		<article>
+			<header>
+				<div class="instance-header">
+					<h1>{ instance.Spec.DisplayName }</h1>
+					<span class={ "badge badge-" + statusClass(instance.Status.Phase) }>{ instance.Status.Phase }</span>
+				</div>
+			</header>
+			<h3>Specification</h3>
+			<table>
+				<tbody>
+					<tr>
+						<td><strong>Name</strong></td>
+						<td>{ instance.Name }</td>
+					</tr>
+					<tr>
+						<td><strong>Image</strong></td>
+						<td>{ instance.Spec.Image }</td>
+					</tr>
+					<tr>
+						<td><strong>CPU Request</strong></td>
+						<td>{ instance.Spec.Resources.Requests.CPU }</td>
+					</tr>
+					<tr>
+						<td><strong>Memory Request</strong></td>
+						<td>{ instance.Spec.Resources.Requests.Memory }</td>
+					</tr>
+					<tr>
+						<td><strong>CPU Limit</strong></td>
+						<td>{ instance.Spec.Resources.Limits.CPU }</td>
+					</tr>
+					<tr>
+						<td><strong>Memory Limit</strong></td>
+						<td>{ instance.Spec.Resources.Limits.Memory }</td>
+					</tr>
+					<tr>
+						<td><strong>Storage</strong></td>
+						<td>{ instance.Spec.Storage.Size }</td>
+					</tr>
+					if instance.Spec.GatewayToken != "" {
+						<tr>
+							<td><strong>Gateway Token</strong></td>
+							<td><code>{ instance.Spec.GatewayToken }</code></td>
+						</tr>
+					}
+					if instance.Spec.Ingress.Enabled {
+						<tr>
+							<td><strong>Host</strong></td>
+							<td>{ instance.Spec.Ingress.Host }</td>
+						</tr>
+					}
+				</tbody>
+			</table>
+			if instance.Status.URL != "" {
+				<p>
+					<a href={ templ.SafeURL(instance.Status.URL) } target="_blank" role="button">
+						Open Instance
+					</a>
+				</p>
+			}
+			if len(instance.Status.Conditions) > 0 {
+				<h3>Conditions</h3>
+				<table>
+					<thead>
+						<tr>
+							<th>Type</th>
+							<th>Status</th>
+							<th>Reason</th>
+							<th>Message</th>
+						</tr>
+					</thead>
+					<tbody>
+						for _, cond := range instance.Status.Conditions {
+							@conditionRow(cond)
+						}
+					</tbody>
+				</table>
+			}
+			<footer>
+				<a href="/" role="button" class="secondary outline">Back</a>
+				<button
+					class="contrast outline"
+					hx-delete={ "/ui/instances/" + instance.Name + "?redirect=true" }
+					hx-confirm="Delete this instance?"
+					hx-swap="none"
+				>Delete</button>
+			</footer>
+		</article>
+	}
+}

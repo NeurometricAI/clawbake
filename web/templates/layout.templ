@@ -1,0 +1,43 @@
+package templates
+
+templ Layout(title string, isAdmin bool) {
+	<!DOCTYPE html>
+	<html lang="en" data-theme="light">
+		<head>
+			<meta charset="UTF-8"/>
+			<meta name="viewport" content="width=device-width, initial-scale=1"/>
+			<title>{ title } - Clawbake</title>
+			<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css"/>
+			<link rel="stylesheet" href="/static/app.css"/>
+			<script src="https://unpkg.com/htmx.org@2.0.4"></script>
+		</head>
+		<body>
+			<nav class="container">
+				<ul>
+					<li><strong><a href="/" class="contrast">Clawbake</a></strong></li>
+				</ul>
+				<ul>
+					<li><a href="/">Dashboard</a></li>
+					if isAdmin {
+						<li><a href="/ui/admin/users">Users</a></li>
+						<li><a href="/ui/admin/defaults">Defaults</a></li>
+					}
+					<li><a href="/auth/logout">Logout</a></li>
+				</ul>
+			</nav>
+			<main class="container">
+				{ children... }
+			</main>
+			<script>
+				document.body.addEventListener('htmx:responseError', function(e) {
+					if (e.detail.xhr.status === 401) window.location = '/';
+				});
+				document.body.addEventListener('instanceCreated', function() {
+					document.getElementById('create-form').innerHTML = '';
+					var empty = document.getElementById('empty-message');
+					if (empty) empty.remove();
+				});
+			</script>
+		</body>
+	</html>
+}

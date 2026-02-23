@@ -1,0 +1,53 @@
+package templates
+
+templ Login() {
+	<!DOCTYPE html>
+	<html lang="en" data-theme="light">
+		<head>
+			<meta charset="UTF-8"/>
+			<meta name="viewport" content="width=device-width, initial-scale=1"/>
+			<title>Login - Clawbake</title>
+			<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css"/>
+			<link rel="stylesheet" href="/static/app.css"/>
+		</head>
+		<body>
+			<main class="container login-container">
+				<article>
+					<header>
+						<h1>Clawbake</h1>
+						<p>Manage your openclaw instances</p>
+					</header>
+					<a href="/auth/login" role="button">Sign in with Google</a>
+				</article>
+			</main>
+		</body>
+	</html>
+}
+
+templ DevLogin() {
+	<!DOCTYPE html>
+	<html lang="en" data-theme="light">
+		<head>
+			<meta charset="UTF-8"/>
+			<meta name="viewport" content="width=device-width, initial-scale=1"/>
+			<title>Login - Clawbake (Dev)</title>
+			<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css"/>
+			<link rel="stylesheet" href="/static/app.css"/>
+		</head>
+		<body>
+			<main class="container login-container">
+				<article>
+					<header>
+						<h1>Clawbake</h1>
+						<p>Manage your openclaw instances</p>
+						<small><mark>Dev Mode — OIDC not configured</mark></small>
+					</header>
+					<div class="grid">
+						<a href="/auth/dev-login?role=admin" role="button">Dev Admin</a>
+						<a href="/auth/dev-login?role=user" role="button" class="secondary">Dev User</a>
+					</div>
+				</article>
+			</main>
+		</body>
+	</html>
+}

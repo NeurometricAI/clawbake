@@ -1,0 +1,23 @@
+# Local development overrides for k3d
+# Usage: make helm-install-local
+
+server:
+  image:
+    repository: clawbake-server
+    tag: dev
+    pullPolicy: Never
+
+operator:
+  image:
+    repository: clawbake-operator
+    tag: dev
+    pullPolicy: Never
+
+ingress:
+  host: clawbake.127-0-0-1.nip.io
+
+instanceDefaults:
+  domain: claw.127-0-0-1.nip.io
+  scheme: http
+  port: "8080"
+  allowInsecureControlUI: true

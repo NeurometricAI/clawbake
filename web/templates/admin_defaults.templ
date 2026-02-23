@@ -1,0 +1,44 @@
+package templates
+
+import "github.com/clawbake/clawbake/internal/database"
+
+templ AdminDefaults(defaults database.InstanceDefault, isAdmin bool) {
+	@Layout("Defaults", isAdmin) {
+		<h1>Instance Defaults</h1>
+		<form method="POST" action="/ui/admin/defaults">
+			<label>
+				Image
+				<input type="text" name="image" value={ defaults.Image }/>
+			</label>
+			<div class="grid">
+				<label>
+					CPU Request
+					<input type="text" name="cpuRequest" value={ defaults.CpuRequest }/>
+				</label>
+				<label>
+					Memory Request
+					<input type="text" name="memoryRequest" value={ defaults.MemoryRequest }/>
+				</label>
+			</div>
+			<div class="grid">
+				<label>
+					CPU Limit
+					<input type="text" name="cpuLimit" value={ defaults.CpuLimit }/>
+				</label>
+				<label>
+					Memory Limit
+					<input type="text" name="memoryLimit" value={ defaults.MemoryLimit }/>
+				</label>
+			</div>
+			<label>
+				Storage Size
+				<input type="text" name="storageSize" value={ defaults.StorageSize }/>
+			</label>
+			<label>
+				Ingress Domain
+				<input type="text" name="ingressDomain" value={ defaults.IngressDomain }/>
+			</label>
+			<button type="submit">Save</button>
+		</form>
+	}
+}

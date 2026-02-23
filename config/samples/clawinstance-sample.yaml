@@ -1,0 +1,21 @@
+apiVersion: clawbake.io/v1alpha1
+kind: ClawInstance
+metadata:
+  name: user-johndoe
+  namespace: clawbake
+spec:
+  userId: "johndoe"
+  displayName: "John Doe"
+  image: "ghcr.io/openclaw/openclaw:latest"
+  resources:
+    requests:
+      cpu: "100m"
+      memory: "256Mi"
+    limits:
+      cpu: "500m"
+      memory: "512Mi"
+  storage:
+    size: "5Gi"
+  ingress:
+    enabled: true
+    host: "johndoe.claw.example.com"

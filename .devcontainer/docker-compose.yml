@@ -34,13 +34,18 @@ services:
     # Setting VAR in project_root/.devcontaner/.env allows referencing it in this file with ${VAR}
     # Setting VAR in project_root/.env allows referencing VAR in this container's runtime environment,
     # e.g. to set vars above in `environment:` vars needed for your terminal usage and application
-    # The precedence of env_files are top-down, so VARs in .env win
+    # The precedence of env_files are top-down, so VARs in .env.local win
     #
+    # Load environment variables into the container.
+    # .env.example has local dev defaults (nip.io domain, http scheme, port 8081).
+    # Create .env.local to override for your setup (gitignored).
+    # Note: Go reads os.Getenv() directly, so these are the effective values
+    # unless you manually export over them in your shell.
     env_file:
       - path: ../.env.example
-        required: false # (optional, ignored if missing)
-      - path: ../.env
-        required: false # (optional, ignored if missing)
+        required: false
+      - path: ../.env.local
+        required: false
 
 volumes:
   home_directory:

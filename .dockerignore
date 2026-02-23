@@ -1,0 +1,12 @@
+.env*
+!.env.example
+.devcontainer/
+.git/
+.claude/
+bin/
+charts/
+config/
+docs/
+hack/
+tests/
+*.md

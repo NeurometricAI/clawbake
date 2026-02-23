@@ -1,0 +1,43 @@
+package templates
+
+import v1alpha1 "github.com/clawbake/clawbake/api/v1alpha1"
+
+templ InstanceCreated(instance v1alpha1.ClawInstance, atLimit bool) {
+	<div id="instance-list" hx-swap-oob="afterbegin">
+		@InstanceCard(instance, nil)
+	</div>
+	<div id="create-form" hx-swap-oob="innerHTML"></div>
+	if atLimit {
+		<span id="new-instance-btn" hx-swap-oob="innerHTML"></span>
+	}
+}
+
+templ InstanceCard(instance v1alpha1.ClawInstance, userNames map[string]string) {
+	<article id={ "instance-" + instance.Name }>
+		<header>
+			<div class="instance-header">
+				<h3><a href={ templ.SafeURL("/ui/instances/" + instance.Name) }>{ instance.Spec.DisplayName }</a></h3>
+				<span class={ "badge badge-" + statusClass(instance.Status.Phase) }>{ instance.Status.Phase }</span>
+			</div>
+		</header>
+		if name, ok := userNames[instance.Spec.UserId]; ok {
+			<p><strong>Owner:</strong> { name }</p>
+		}
+		<p><strong>Image:</strong> { instance.Spec.Image }</p>
+		if instance.Status.URL != "" {
+			<p>
+				<strong>URL:</strong> <a href={ templ.SafeURL(instance.Status.URL) } target="_blank">{ instance.Status.URL }</a>
+			</p>
+		}
+		<footer>
+			<a href={ templ.SafeURL("/ui/instances/" + instance.Name) } role="button" class="outline">Details</a>
+			<button
+				class="secondary outline"
+				hx-delete={ "/ui/instances/" + instance.Name }
+				hx-confirm="Delete this instance?"
+				hx-target={ "#instance-" + instance.Name }
+				hx-swap="outerHTML"
+			>Delete</button>
+		</footer>
+	</article>
+}

@@ -1,0 +1,30 @@
+Clawbake has been installed.
+
+Components deployed:
+  - Server (web application)
+  - Operator (Kubernetes controller)
+  - ClawInstance CRD
+{{- if and (not .Values.database.external) .Values.database.internal.enabled }}
+  - PostgreSQL (internal)
+{{- end }}
+
+{{- if .Values.ingress.enabled }}
+
+Access the dashboard at: http{{ if .Values.ingress.tls }}s{{ end }}://{{ .Values.ingress.host }}
+{{- end }}
+
+To check the status of ClawInstances:
+  kubectl get clawinstances -A
+
+To create a new ClawInstance:
+  kubectl apply -f - <<EOF
+  apiVersion: clawbake.io/v1alpha1
+  kind: ClawInstance
+  metadata:
+    name: my-instance
+    namespace: {{ .Release.Namespace }}
+  spec:
+    userId: "user-1"
+    displayName: "My Instance"
+    image: {{ .Values.instanceDefaults.image }}
+  EOF

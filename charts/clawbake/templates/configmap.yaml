@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "clawbake.fullname" . }}
+  labels:
+    {{- include "clawbake.labels" . | nindent 4 }}
+data:
+  ingress-domain: {{ .Values.instanceDefaults.domain }}
+  ingress-scheme: {{ .Values.instanceDefaults.scheme }}
+  ingress-port: {{ .Values.instanceDefaults.port | quote }}
+  instance-default-image: {{ .Values.instanceDefaults.image }}
+  instance-cpu-request: {{ .Values.instanceDefaults.cpuRequest }}
+  instance-memory-request: {{ .Values.instanceDefaults.memoryRequest }}
+  instance-cpu-limit: {{ .Values.instanceDefaults.cpuLimit }}
+  instance-memory-limit: {{ .Values.instanceDefaults.memoryLimit }}
+  instance-storage-size: {{ .Values.instanceDefaults.storageSize }}
+  instance-allow-insecure-control-ui: {{ .Values.instanceDefaults.allowInsecureControlUI | quote }}

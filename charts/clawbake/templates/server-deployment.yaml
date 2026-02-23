@@ -1,0 +1,147 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "clawbake.fullname" . }}-server
+  labels:
+    {{- include "clawbake.labels" . | nindent 4 }}
+    app.kubernetes.io/component: server
+spec:
+  replicas: {{ .Values.server.replicas }}
+  selector:
+    matchLabels:
+      {{- include "clawbake.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: server
+  template:
+    metadata:
+      labels:
+        {{- include "clawbake.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: server
+    spec:
+      serviceAccountName: {{ include "clawbake.fullname" . }}-server
+      initContainers:
+        - name: migrate
+          image: "{{ .Values.server.image.repository }}:{{ .Values.server.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.server.image.pullPolicy }}
+          args: ["--migrate"]
+          env:
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "clawbake.fullname" . }}
+                  key: database-url
+      containers:
+        - name: server
+          image: "{{ .Values.server.image.repository }}:{{ .Values.server.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.server.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.server.port }}
+              protocol: TCP
+          env:
+            - name: PORT
+              value: {{ .Values.server.port | quote }}
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "clawbake.fullname" . }}
+                  key: database-url
+            - name: OIDC_ISSUER
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "clawbake.fullname" . }}
+                  key: oidc-issuer
+            - name: OIDC_CLIENT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "clawbake.fullname" . }}
+                  key: oidc-client-id
+            - name: OIDC_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "clawbake.fullname" . }}
+                  key: oidc-client-secret
+            - name: OIDC_REDIRECT_URL
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "clawbake.fullname" . }}
+                  key: oidc-redirect-url
+            - name: SESSION_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "clawbake.fullname" . }}
+                  key: session-secret
+            - name: INGRESS_DOMAIN
+              valueFrom:
+                configMapKeyRef:
+                  name: {{ include "clawbake.fullname" . }}
+                  key: ingress-domain
+            - name: INGRESS_SCHEME
+              valueFrom:
+                configMapKeyRef:
+                  name: {{ include "clawbake.fullname" . }}
+                  key: ingress-scheme
+            - name: INGRESS_PORT
+              valueFrom:
+                configMapKeyRef:
+                  name: {{ include "clawbake.fullname" . }}
+                  key: ingress-port
+            - name: INSTANCE_DEFAULT_IMAGE
+              valueFrom:
+                configMapKeyRef:
+                  name: {{ include "clawbake.fullname" . }}
+                  key: instance-default-image
+            - name: INSTANCE_DEFAULT_CPU_REQUEST
+              valueFrom:
+                configMapKeyRef:
+                  name: {{ include "clawbake.fullname" . }}
+                  key: instance-cpu-request
+            - name: INSTANCE_DEFAULT_MEMORY_REQUEST
+              valueFrom:
+                configMapKeyRef:
+                  name: {{ include "clawbake.fullname" . }}
+                  key: instance-memory-request
+            - name: INSTANCE_DEFAULT_CPU_LIMIT
+              valueFrom:
+                configMapKeyRef:
+                  name: {{ include "clawbake.fullname" . }}
+                  key: instance-cpu-limit
+            - name: INSTANCE_DEFAULT_MEMORY_LIMIT
+              valueFrom:
+                configMapKeyRef:
+                  name: {{ include "clawbake.fullname" . }}
+                  key: instance-memory-limit
+            - name: INSTANCE_DEFAULT_STORAGE_SIZE
+              valueFrom:
+                configMapKeyRef:
+                  name: {{ include "clawbake.fullname" . }}
+                  key: instance-storage-size
+            {{- if .Values.slack.enabled }}
+            - name: SLACK_BOT_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "clawbake.fullname" . }}
+                  key: slack-bot-token
+            - name: SLACK_SIGNING_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "clawbake.fullname" . }}
+                  key: slack-signing-secret
+            {{- end }}
+            {{- range $key, $value := .Values.server.env }}
+            - name: {{ $key }}
+              value: {{ $value | quote }}
+            {{- end }}
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            initialDelaySeconds: 3
+            periodSeconds: 5
+          resources:
+            {{- toYaml .Values.server.resources | nindent 12 }}

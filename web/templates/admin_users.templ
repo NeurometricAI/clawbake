@@ -1,0 +1,58 @@
+package templates
+
+import (
+	"fmt"
+	"github.com/clawbake/clawbake/internal/database"
+)
+
+func userIDString(user database.User) string {
+	v, _ := user.ID.Value()
+	s, _ := v.(string)
+	return s
+}
+
+templ AdminUsers(users []database.User, isAdmin bool) {
+	@Layout("Users", isAdmin) {
+		<h1>Users</h1>
+		<table>
+			<thead>
+				<tr>
+					<th>Name</th>
+					<th>Email</th>
+					<th>Role</th>
+					<th>Instance Limit</th>
+				</tr>
+			</thead>
+			<tbody>
+				for _, user := range users {
+					@AdminUserRow(user)
+				}
+			</tbody>
+		</table>
+	}
+}
+
+templ AdminUserRow(user database.User) {
+	<tr id={ "user-" + userIDString(user) }>
+		<td>{ user.Name }</td>
+		<td>{ user.Email }</td>
+		<td>{ user.Role }</td>
+		<td>
+			<form
+				hx-post={ "/ui/admin/users/" + userIDString(user) + "/limit" }
+				hx-target={ "#user-" + userIDString(user) }
+				hx-swap="outerHTML"
+				style="display:inline-flex;align-items:center;gap:0.5rem"
+			>
+				<input
+					type="number"
+					name="instanceLimit"
+					value={ fmt.Sprintf("%d", user.InstanceLimit) }
+					min="0"
+					style="width:4rem"
+				/>
+				<button type="submit">Save</button>
+			</form>
+		</td>
+	</tr>
+}

@@ -1,4 +1,6 @@
 .devcontainer/commands.d
 .devcontainer/.env
-.env
+.env*
+!.env.example
 tmp/
+bin/
