@@ -2,7 +2,9 @@ name: Release
 
 on:
   release:
-    types: [published, prereleased]
+    # "published" fires for both prereleases and full releases.
+    # Do NOT add "prereleased" — it would cause duplicate runs.
+    types: [published]
 
 permissions:
   contents: read
