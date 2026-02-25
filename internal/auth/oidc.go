@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"net/http"
+	"net/url"
 	"strings"
 
 	"github.com/coreos/go-oidc/v3/oidc"
@@ -20,10 +21,11 @@ import (
 type contextKey string
 
 const (
-	sessionName       = "clawbake-session"
-	sessionKeyUserID  = "user_id"
-	sessionKeyState   = "oauth_state"
-	UserContextKey    = contextKey("user")
+	sessionName        = "clawbake-session"
+	sessionKeyUserID   = "user_id"
+	sessionKeyState    = "oauth_state"
+	sessionKeyRedirect = "redirect_url"
+	UserContextKey     = contextKey("user")
 )
 
 type OIDCAuth struct {
@@ -70,6 +72,9 @@ func (a *OIDCAuth) LoginHandler(c echo.Context) error {
 
 	session, _ := a.store.Get(c.Request(), sessionName)
 	session.Values[sessionKeyState] = state
+	if redirect := c.QueryParam("redirect"); redirect != "" {
+		session.Values[sessionKeyRedirect] = redirect
+	}
 	if err := session.Save(c.Request(), c.Response()); err != nil {
 		return echo.NewHTTPError(http.StatusInternalServerError, "failed to save session")
 	}
@@ -142,11 +147,18 @@ func (a *OIDCAuth) CallbackHandler(c echo.Context) error {
 
 	userID, _ := user.ID.Value()
 	session.Values[sessionKeyUserID] = userID
+
+	redirect := "/"
+	if r, ok := session.Values[sessionKeyRedirect].(string); ok {
+		redirect = safeRedirectPath(r)
+		delete(session.Values, sessionKeyRedirect)
+	}
+
 	if err := session.Save(c.Request(), c.Response()); err != nil {
 		return echo.NewHTTPError(http.StatusInternalServerError, "failed to save session")
 	}
 
-	return c.Redirect(http.StatusFound, "/")
+	return c.Redirect(http.StatusFound, redirect)
 }
 
 func (a *OIDCAuth) LogoutHandler(c echo.Context) error {
@@ -162,6 +174,10 @@ func (a *OIDCAuth) RequireAuth(next echo.HandlerFunc) echo.HandlerFunc {
 
 		userIDVal, ok := session.Values[sessionKeyUserID]
 		if !ok {
+			if isBrowserRequest(c) {
+				redirect := c.Request().URL.RequestURI()
+				return c.Redirect(http.StatusFound, "/auth/login?redirect="+url.QueryEscape(redirect))
+			}
 			return echo.NewHTTPError(http.StatusUnauthorized, "authentication required")
 		}
 
@@ -230,6 +246,21 @@ func randomState() (string, error) {
 		return "", err
 	}
 	return hex.EncodeToString(b), nil
+}
+
+// isBrowserRequest returns true if the request appears to come from a browser
+// expecting an HTML response (as opposed to an API/XHR client).
+func isBrowserRequest(c echo.Context) bool {
+	return strings.Contains(c.Request().Header.Get("Accept"), "text/html")
+}
+
+// safeRedirectPath validates a redirect URL to prevent open redirects.
+// Only relative paths are allowed; anything else falls back to "/".
+func safeRedirectPath(u string) string {
+	if u == "" || !strings.HasPrefix(u, "/") || strings.HasPrefix(u, "//") {
+		return "/"
+	}
+	return u
 }
 
 // ErrNoSession is returned when no valid session exists.

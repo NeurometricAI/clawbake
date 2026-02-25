@@ -5,6 +5,7 @@ import (
 	"errors"
 	"log"
 	"net/http"
+	"net/url"
 	"strings"
 
 	"github.com/gorilla/sessions"
@@ -51,7 +52,8 @@ func (d *DevAuth) LoginHandler(c echo.Context) error {
 		return echo.NewHTTPError(http.StatusInternalServerError, "failed to save session")
 	}
 
-	return c.Redirect(http.StatusFound, "/")
+	redirect := safeRedirectPath(c.QueryParam("redirect"))
+	return c.Redirect(http.StatusFound, redirect)
 }
 
 func (d *DevAuth) LogoutHandler(c echo.Context) error {
@@ -132,6 +134,10 @@ func (d *DevAuth) RequireAuth(next echo.HandlerFunc) echo.HandlerFunc {
 		session, _ := d.store.Get(c.Request(), sessionName)
 		role, ok := session.Values[devSessionKeyRole].(string)
 		if !ok {
+			if isBrowserRequest(c) {
+				redirect := c.Request().URL.RequestURI()
+				return c.Redirect(http.StatusFound, "/auth/dev-login?redirect="+url.QueryEscape(redirect))
+			}
 			return echo.NewHTTPError(http.StatusUnauthorized, "authentication required")
 		}
 
