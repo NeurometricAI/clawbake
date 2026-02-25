@@ -56,7 +56,6 @@ func newTestBot(slackMock *mockSlackClient) *Bot {
 		signingSecret: testSigningSecret,
 		k8sClient:     k8sClient,
 		namespace:     "clawbake",
-		ingressDomain: "claw.example.com",
 	}
 }
 
@@ -235,13 +234,12 @@ func TestGetUserInstance_Found(t *testing.T) {
 
 	instance := &clawbakev1alpha1.ClawInstance{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "claw-test",
+			Name:      uidStr,
 			Namespace: "clawbake",
 		},
 		Spec: clawbakev1alpha1.ClawInstanceSpec{
-			UserId:      uidStr,
-			DisplayName: "Test User",
-			Image:       "openclaw:latest",
+			UserId: uidStr,
+			Image:  "openclaw:latest",
 		},
 	}
 	if err := b.k8sClient.Create(context.Background(), instance); err != nil {

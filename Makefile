@@ -28,6 +28,7 @@ build-operator:
 DOTENV := $(or $(wildcard .env.local), $(wildcard .env.example))
 
 run-server:
+	@echo "Using environment from $(DOTENV)"
 	set -a && [ -f "$(DOTENV)" ] && . ./$(DOTENV); go run ./cmd/server
 
 run-operator:
@@ -76,6 +77,9 @@ migrate-create:
 	@read -p "Migration name: " name; \
 	migrate create -ext sql -dir db/migrations -seq $$name
 
+migrate-drop:
+	migrate -database "$(DATABASE_URL)" -path db/migrations drop
+
 ## Docker
 docker-build:
 	docker build -t $(IMG)-server:$(TAG) --build-arg BINARY=server .
@@ -104,6 +108,7 @@ k3d-create:
 	k3d cluster create clawbake \
 		--port "8080:80@loadbalancer" \
 		--port "8443:443@loadbalancer" \
+		--port "5432:30432@server:0" \
 		--agents 2
 
 k3d-delete:

@@ -2,6 +2,7 @@
 # Usage: make helm-install-local
 
 server:
+  baseURL: http://clawbake.127-0-0-1.nip.io:8080
   image:
     repository: clawbake-server
     tag: dev
@@ -16,8 +17,12 @@ operator:
 ingress:
   host: clawbake.127-0-0-1.nip.io
 
+# Expose PostgreSQL as NodePort so the devcontainer can reach it
+# via host.docker.internal:5432 (mapped by k3d --port flag)
+database:
+  internal:
+    serviceType: NodePort
+    nodePort: 30432
+
 instanceDefaults:
-  domain: claw.127-0-0-1.nip.io
-  scheme: http
-  port: "8080"
   allowInsecureControlUI: true

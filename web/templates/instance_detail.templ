@@ -15,11 +15,11 @@ templ conditionRow(cond metav1.Condition) {
 }
 
 templ InstanceDetail(instance v1alpha1.ClawInstance, isAdmin bool) {
-	@Layout(instance.Spec.DisplayName, isAdmin) {
+	@Layout("Instance", isAdmin) {
 		<article>
 			<header>
 				<div class="instance-header">
-					<h1>{ instance.Spec.DisplayName }</h1>
+					<h1>Instance</h1>
 					<span class={ "badge badge-" + statusClass(instance.Status.Phase) }>{ instance.Status.Phase }</span>
 				</div>
 			</header>
@@ -60,17 +60,11 @@ templ InstanceDetail(instance v1alpha1.ClawInstance, isAdmin bool) {
 							<td><code>{ instance.Spec.GatewayToken }</code></td>
 						</tr>
 					}
-					if instance.Spec.Ingress.Enabled {
-						<tr>
-							<td><strong>Host</strong></td>
-							<td>{ instance.Spec.Ingress.Host }</td>
-						</tr>
-					}
 				</tbody>
 			</table>
-			if instance.Status.URL != "" {
+			if instance.Status.Phase == "Running" {
 				<p>
-					<a href={ templ.SafeURL(instance.Status.URL) } target="_blank" role="button">
+					<a href="/proxy/" target="_blank" role="button">
 						Open Instance
 					</a>
 				</p>

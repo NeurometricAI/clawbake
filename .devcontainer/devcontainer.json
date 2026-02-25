@@ -1,7 +1,6 @@
 {
     "dockerComposeFile": [
-        "docker-compose.yml",
-        "docker-compose-postgresql.yml"
+        "docker-compose.yml"
     ],
 
     "service": "devcontainer",

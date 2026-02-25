@@ -24,6 +24,8 @@ services:
       # home directory, you will have to delete the volume/container and rebuild
       #
       - home_directory:/home/vscode
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     command: sleep infinity
     environment:
       AWS_PROFILE: neurometric

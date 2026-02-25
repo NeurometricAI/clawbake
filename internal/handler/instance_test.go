@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
-	"strings"
 	"testing"
 
 	"github.com/labstack/echo/v4"
@@ -31,7 +30,7 @@ func newUserContext(ctx context.Context, userID string, role string) context.Con
 	var uid pgtype.UUID
 	_ = uid.Scan(userID)
 	user := &database.User{
-		ID:   uid,
+		ID:    uid,
 		Email: "test@example.com",
 		Name:  "Test User",
 		Role:  role,
@@ -45,13 +44,12 @@ func TestListInstances(t *testing.T) {
 
 	existing := &v1alpha1.ClawInstance{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "test-instance",
+			Name:      userID,
 			Namespace: "clawbake",
 		},
 		Spec: v1alpha1.ClawInstanceSpec{
-			UserId:      userID,
-			DisplayName: "Test Instance",
-			Image:       "openclaw:latest",
+			UserId: userID,
+			Image:  "openclaw:latest",
 		},
 	}
 
@@ -97,24 +95,22 @@ func TestListInstancesAdminSeesAll(t *testing.T) {
 	instances := []v1alpha1.ClawInstance{
 		{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      "instance-a",
+				Name:      "00000000-0000-0000-0000-000000000001",
 				Namespace: "clawbake",
 			},
 			Spec: v1alpha1.ClawInstanceSpec{
-				UserId:      "00000000-0000-0000-0000-000000000001",
-				DisplayName: "Instance A",
-				Image:       "openclaw:latest",
+				UserId: "00000000-0000-0000-0000-000000000001",
+				Image:  "openclaw:latest",
 			},
 		},
 		{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      "instance-b",
+				Name:      "00000000-0000-0000-0000-000000000002",
 				Namespace: "clawbake",
 			},
 			Spec: v1alpha1.ClawInstanceSpec{
-				UserId:      "00000000-0000-0000-0000-000000000002",
-				DisplayName: "Instance B",
-				Image:       "openclaw:latest",
+				UserId: "00000000-0000-0000-0000-000000000002",
+				Image:  "openclaw:latest",
 			},
 		},
 	}
@@ -163,13 +159,12 @@ func TestGetInstance(t *testing.T) {
 
 	existing := &v1alpha1.ClawInstance{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "my-instance",
+			Name:      userID,
 			Namespace: "clawbake",
 		},
 		Spec: v1alpha1.ClawInstanceSpec{
-			UserId:      userID,
-			DisplayName: "My Instance",
-			Image:       "openclaw:latest",
+			UserId: userID,
+			Image:  "openclaw:latest",
 		},
 	}
 
@@ -184,11 +179,11 @@ func TestGetInstance(t *testing.T) {
 	}
 
 	e := echo.New()
-	req := httptest.NewRequest(http.MethodGet, "/api/instances/my-instance", nil)
+	req := httptest.NewRequest(http.MethodGet, "/api/instances/"+userID, nil)
 	rec := httptest.NewRecorder()
 	c := e.NewContext(req, rec)
 	c.SetParamNames("id")
-	c.SetParamValues("my-instance")
+	c.SetParamValues(userID)
 
 	ctx := newUserContext(c.Request().Context(), userID, "user")
 	c.SetRequest(c.Request().WithContext(ctx))
@@ -207,13 +202,12 @@ func TestGetInstanceNotOwned(t *testing.T) {
 
 	existing := &v1alpha1.ClawInstance{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "other-instance",
+			Name:      "00000000-0000-0000-0000-000000000002",
 			Namespace: "clawbake",
 		},
 		Spec: v1alpha1.ClawInstanceSpec{
-			UserId:      "00000000-0000-0000-0000-000000000002",
-			DisplayName: "Other Instance",
-			Image:       "openclaw:latest",
+			UserId: "00000000-0000-0000-0000-000000000002",
+			Image:  "openclaw:latest",
 		},
 	}
 
@@ -228,11 +222,11 @@ func TestGetInstanceNotOwned(t *testing.T) {
 	}
 
 	e := echo.New()
-	req := httptest.NewRequest(http.MethodGet, "/api/instances/other-instance", nil)
+	req := httptest.NewRequest(http.MethodGet, "/api/instances/00000000-0000-0000-0000-000000000002", nil)
 	rec := httptest.NewRecorder()
 	c := e.NewContext(req, rec)
 	c.SetParamNames("id")
-	c.SetParamValues("other-instance")
+	c.SetParamValues("00000000-0000-0000-0000-000000000002")
 
 	otherUser := "00000000-0000-0000-0000-000000000001"
 	ctx := newUserContext(c.Request().Context(), otherUser, "user")
@@ -258,13 +252,12 @@ func TestDeleteInstance(t *testing.T) {
 
 	existing := &v1alpha1.ClawInstance{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "delete-me",
+			Name:      userID,
 			Namespace: "clawbake",
 		},
 		Spec: v1alpha1.ClawInstanceSpec{
-			UserId:      userID,
-			DisplayName: "Delete Me",
-			Image:       "openclaw:latest",
+			UserId: userID,
+			Image:  "openclaw:latest",
 		},
 	}
 
@@ -279,11 +272,11 @@ func TestDeleteInstance(t *testing.T) {
 	}
 
 	e := echo.New()
-	req := httptest.NewRequest(http.MethodDelete, "/api/instances/delete-me", nil)
+	req := httptest.NewRequest(http.MethodDelete, "/api/instances/"+userID, nil)
 	rec := httptest.NewRecorder()
 	c := e.NewContext(req, rec)
 	c.SetParamNames("id")
-	c.SetParamValues("delete-me")
+	c.SetParamValues(userID)
 
 	ctx := newUserContext(c.Request().Context(), userID, "user")
 	c.SetRequest(c.Request().WithContext(ctx))
@@ -297,32 +290,49 @@ func TestDeleteInstance(t *testing.T) {
 	}
 }
 
-func TestCreateInstanceMissingDisplayName(t *testing.T) {
+func TestCreateInstanceAlreadyExists(t *testing.T) {
+	scheme := newTestScheme()
+	userID := "00000000-0000-0000-0000-000000000001"
+
+	existing := &v1alpha1.ClawInstance{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      userID,
+			Namespace: "clawbake",
+		},
+		Spec: v1alpha1.ClawInstanceSpec{
+			UserId: userID,
+			Image:  "openclaw:latest",
+		},
+	}
+
+	fakeClient := fake.NewClientBuilder().
+		WithScheme(scheme).
+		WithObjects(existing).
+		Build()
+
 	h := &handler.Handler{
+		K8s:    fakeClient,
 		Config: &config.Config{KubeNamespace: "clawbake"},
 	}
 
 	e := echo.New()
-	body := `{}`
-	req := httptest.NewRequest(http.MethodPost, "/api/instances", strings.NewReader(body))
-	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+	req := httptest.NewRequest(http.MethodPost, "/api/instances", nil)
 	rec := httptest.NewRecorder()
 	c := e.NewContext(req, rec)
 
-	userID := "00000000-0000-0000-0000-000000000001"
 	ctx := newUserContext(c.Request().Context(), userID, "user")
 	c.SetRequest(c.Request().WithContext(ctx))
 
 	err := h.CreateInstance(c)
 	if err == nil {
-		t.Fatal("expected error for missing displayName")
+		t.Fatal("expected error for already existing instance")
 	}
 
 	httpErr, ok := err.(*echo.HTTPError)
 	if !ok {
 		t.Fatalf("expected echo.HTTPError, got %T", err)
 	}
-	if httpErr.Code != http.StatusBadRequest {
-		t.Errorf("expected 400, got %d", httpErr.Code)
+	if httpErr.Code != http.StatusConflict {
+		t.Errorf("expected 409, got %d", httpErr.Code)
 	}
 }

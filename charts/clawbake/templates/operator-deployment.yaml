@@ -25,21 +25,6 @@ spec:
           args:
             - -leader-elect=true
           env:
-            - name: INGRESS_DOMAIN
-              valueFrom:
-                configMapKeyRef:
-                  name: {{ include "clawbake.fullname" . }}
-                  key: ingress-domain
-            - name: INGRESS_SCHEME
-              valueFrom:
-                configMapKeyRef:
-                  name: {{ include "clawbake.fullname" . }}
-                  key: ingress-scheme
-            - name: INGRESS_PORT
-              valueFrom:
-                configMapKeyRef:
-                  name: {{ include "clawbake.fullname" . }}
-                  key: ingress-port
             - name: INSTANCE_DEFAULT_IMAGE
               valueFrom:
                 configMapKeyRef:

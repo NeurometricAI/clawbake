@@ -30,18 +30,18 @@ type Bot struct {
 	db            *database.Queries
 	k8sClient     client.Client
 	namespace     string
-	ingressDomain string
+	baseURL       string
 }
 
 // New creates a Bot with the given configuration.
-func New(botToken, signingSecret string, db *database.Queries, k8sClient client.Client, namespace, ingressDomain string) *Bot {
+func New(botToken, signingSecret string, db *database.Queries, k8sClient client.Client, namespace, baseURL string) *Bot {
 	return &Bot{
 		slack:         slack.New(botToken),
 		signingSecret: signingSecret,
 		db:            db,
 		k8sClient:     k8sClient,
 		namespace:     namespace,
-		ingressDomain: ingressDomain,
+		baseURL:       baseURL,
 	}
 }
 

@@ -22,9 +22,8 @@ func TestCreateAndGetInstance(t *testing.T) {
 			Namespace: "default",
 		},
 		Spec: v1alpha1.ClawInstanceSpec{
-			UserId:      "user-1",
-			DisplayName: "Test",
-			Image:       "openclaw:latest",
+			UserId: "user-1",
+			Image:  "openclaw:latest",
 		},
 	}
 
@@ -36,8 +35,8 @@ func TestCreateAndGetInstance(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to get instance: %v", err)
 	}
-	if got.Spec.DisplayName != "Test" {
-		t.Errorf("expected DisplayName 'Test', got %q", got.Spec.DisplayName)
+	if got.Spec.UserId != "user-1" {
+		t.Errorf("expected UserId 'user-1', got %q", got.Spec.UserId)
 	}
 }
 

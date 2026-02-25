@@ -1,7 +1,6 @@
 package templates
 
 import (
-	"fmt"
 	"github.com/clawbake/clawbake/internal/database"
 )
 
@@ -20,7 +19,6 @@ templ AdminUsers(users []database.User, isAdmin bool) {
 					<th>Name</th>
 					<th>Email</th>
 					<th>Role</th>
-					<th>Instance Limit</th>
 				</tr>
 			</thead>
 			<tbody>
@@ -37,22 +35,5 @@ templ AdminUserRow(user database.User) {
 		<td>{ user.Name }</td>
 		<td>{ user.Email }</td>
 		<td>{ user.Role }</td>
-		<td>
-			<form
-				hx-post={ "/ui/admin/users/" + userIDString(user) + "/limit" }
-				hx-target={ "#user-" + userIDString(user) }
-				hx-swap="outerHTML"
-				style="display:inline-flex;align-items:center;gap:0.5rem"
-			>
-				<input
-					type="number"
-					name="instanceLimit"
-					value={ fmt.Sprintf("%d", user.InstanceLimit) }
-					min="0"
-					style="width:4rem"
-				/>
-				<button type="submit">Save</button>
-			</form>
-		</td>
 	</tr>
 }

@@ -57,12 +57,13 @@ See `.env.example` for all configuration. Key variables:
 - `DATABASE_URL`: PostgreSQL connection string
 - `OIDC_ISSUER`, `OIDC_CLIENT_ID`, `OIDC_CLIENT_SECRET`: Google OIDC
 - `SLACK_BOT_TOKEN`, `SLACK_SIGNING_SECRET`: Slack bot
-- `INGRESS_DOMAIN`: Base domain for user instance ingresses
+- `BASE_URL`: Public URL of the clawbake web app
 
 ## Development Environment
 
 - Devcontainer with Docker-outside-of-Docker (DooD)
 - Automatic port mapping is disabled
+- Port 5432: k3d PostgreSQL (mapped via k3d's `--port "5432:30432@server:0"` + NodePort service, accessed from devcontainer via `host.docker.internal`)
 - Port 8080: k3d cluster ingress load balancer (mapped via k3d's `--port "8080:80@loadbalancer"`, NOT via VS Code forwardPorts — VS Code forwarding would intercept the connection)
 - Port 8081: running the server directly in the container (mapped via VS Code forwardPorts)
 
@@ -78,7 +79,9 @@ See `.env.example` for all configuration. Key variables:
 
 ## Database
 
-PostgreSQL runs as a devcontainer sidecar. Connection: `postgresql://postgres:postgres@db:5432/clawbake`
+PostgreSQL runs inside the k3d cluster (deployed by Helm). Both the in-cluster server and `make run-server` share the same database. The k3d PostgreSQL is exposed as a NodePort (30432) and mapped to the Docker host on port 5432. The devcontainer reaches it via `host.docker.internal:5432`.
+
+Connection: `postgresql://clawbake:clawbake@host.docker.internal:5432/clawbake`
 
 Migrations use golang-migrate. Create new: `make migrate-create`
 

@@ -31,7 +31,6 @@ type updateDefaultsRequest struct {
 	CpuLimit      string `json:"cpuLimit"`
 	MemoryLimit   string `json:"memoryLimit"`
 	StorageSize   string `json:"storageSize"`
-	IngressDomain string `json:"ingressDomain"`
 }
 
 func (h *Handler) UpdateDefaults(c echo.Context) error {
@@ -47,7 +46,6 @@ func (h *Handler) UpdateDefaults(c echo.Context) error {
 		CpuLimit:      req.CpuLimit,
 		MemoryLimit:   req.MemoryLimit,
 		StorageSize:   req.StorageSize,
-		IngressDomain: req.IngressDomain,
 	})
 	if err != nil {
 		return echo.NewHTTPError(http.StatusInternalServerError, "failed to update defaults")

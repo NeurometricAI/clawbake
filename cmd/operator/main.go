@@ -6,7 +6,6 @@ import (
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
-	networkingv1 "k8s.io/api/networking/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -19,17 +18,9 @@ import (
 
 var scheme = runtime.NewScheme()
 
-func envOrDefault(key, defaultVal string) string {
-	if v := os.Getenv(key); v != "" {
-		return v
-	}
-	return defaultVal
-}
-
 func init() {
 	utilruntime.Must(corev1.AddToScheme(scheme))
 	utilruntime.Must(appsv1.AddToScheme(scheme))
-	utilruntime.Must(networkingv1.AddToScheme(scheme))
 	utilruntime.Must(clawbakev1alpha1.AddToScheme(scheme))
 }
 
@@ -64,8 +55,6 @@ func main() {
 		Client:                 mgr.GetClient(),
 		Scheme:                 mgr.GetScheme(),
 		Recorder:               mgr.GetEventRecorderFor("clawbake-operator"),
-		IngressScheme:          envOrDefault("INGRESS_SCHEME", "https"),
-		IngressPort:            os.Getenv("INGRESS_PORT"),
 		AllowInsecureControlUI: os.Getenv("ALLOW_INSECURE_CONTROL_UI") == "true",
 	}
 	if err := reconciler.SetupWithManager(mgr); err != nil {

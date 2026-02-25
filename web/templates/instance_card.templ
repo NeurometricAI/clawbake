@@ -2,21 +2,18 @@ package templates
 
 import v1alpha1 "github.com/clawbake/clawbake/api/v1alpha1"
 
-templ InstanceCreated(instance v1alpha1.ClawInstance, atLimit bool) {
-	<div id="instance-list" hx-swap-oob="afterbegin">
+templ InstanceCreated(instance v1alpha1.ClawInstance) {
+	<div id="instance-list" hx-swap-oob="innerHTML">
 		@InstanceCard(instance, nil)
 	</div>
-	<div id="create-form" hx-swap-oob="innerHTML"></div>
-	if atLimit {
-		<span id="new-instance-btn" hx-swap-oob="innerHTML"></span>
-	}
+	<span id="new-instance-btn" hx-swap-oob="innerHTML"></span>
 }
 
 templ InstanceCard(instance v1alpha1.ClawInstance, userNames map[string]string) {
 	<article id={ "instance-" + instance.Name }>
 		<header>
 			<div class="instance-header">
-				<h3><a href={ templ.SafeURL("/ui/instances/" + instance.Name) }>{ instance.Spec.DisplayName }</a></h3>
+				<h3><a href={ templ.SafeURL("/ui/instances/" + instance.Name) }>Instance</a></h3>
 				<span class={ "badge badge-" + statusClass(instance.Status.Phase) }>{ instance.Status.Phase }</span>
 			</div>
 		</header>
@@ -24,9 +21,9 @@ templ InstanceCard(instance v1alpha1.ClawInstance, userNames map[string]string) 
 			<p><strong>Owner:</strong> { name }</p>
 		}
 		<p><strong>Image:</strong> { instance.Spec.Image }</p>
-		if instance.Status.URL != "" {
+		if instance.Status.Phase == "Running" {
 			<p>
-				<strong>URL:</strong> <a href={ templ.SafeURL(instance.Status.URL) } target="_blank">{ instance.Status.URL }</a>
+				<a href="/proxy/" target="_blank">Open Instance</a>
 			</p>
 		}
 		<footer>

@@ -4,7 +4,7 @@ This guide covers running Clawbake locally using the devcontainer.
 
 ## Prerequisites
 
-The devcontainer provides all tools via `mise` (Go, kubectl, k3d, Helm, etc). PostgreSQL runs as a compose sidecar accessible at `db:5432`.
+The devcontainer provides all tools via `mise` (Go, kubectl, k3d, Helm, etc). PostgreSQL runs inside the k3d cluster and is accessible from the devcontainer via `host.docker.internal:5432`.
 
 ## Two Development Modes
 
@@ -49,7 +49,7 @@ make helm-install-local
 | 8080 (host) | k3d loadbalancer | host -> k3d cluster ingress (traefik) |
 | 8081 (container) | `make run-server` | devcontainer -> host via VS Code forwarding |
 | 8443 (host) | k3d loadbalancer (TLS) | host -> k3d cluster ingress |
-| 5432 (compose) | PostgreSQL sidecar | accessible as `db:5432` inside devcontainer |
+| 5432 (host) | k3d PostgreSQL (NodePort 30432) | host -> k3d server node, devcontainer reaches via `host.docker.internal` |
 
 The server port is set to 8081 (via `PORT` in `.env.local`) to avoid colliding with k3d's host port 8080.
 
@@ -69,15 +69,7 @@ Instance ingress uses hostname-based routing via k3d's built-in Traefik ingress 
 
 ### Configuration
 
-Three env vars control URL construction:
-
-| Variable | Local dev | Production |
-|----------|-----------|------------|
-| `INGRESS_DOMAIN` | `claw.127-0-0-1.nip.io` | `claw.example.com` |
-| `INGRESS_SCHEME` | `http` | `https` |
-| `INGRESS_PORT` | `8080` | _(empty, uses default 443)_ |
-
-These are set in `.env.local` for Mode A, or in `charts/clawbake/values-local.yaml` for Mode B.
+Instance ingress hostnames are configured via `ingress.host` in Helm values. The web app's own public URL is set via `BASE_URL` (env var) or `server.baseURL` (Helm value).
 
 ### Devcontainer networking
 

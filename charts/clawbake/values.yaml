@@ -10,11 +10,11 @@ server:
   port: 8080
   resources:
     requests:
-      cpu: 100m
-      memory: 128Mi
+      cpu: 1
+      memory: 512Mi
     limits:
-      cpu: 500m
-      memory: 256Mi
+      cpu: 4
+      memory: 1Gi
   env: {}
 
 operator:
@@ -63,9 +63,6 @@ ingress:
 
 instanceDefaults:
   image: ghcr.io/openclaw/openclaw:latest
-  domain: claw.example.com
-  scheme: https
-  port: ""
   cpuRequest: 100m
   memoryRequest: 1Gi
   cpuLimit: 500m

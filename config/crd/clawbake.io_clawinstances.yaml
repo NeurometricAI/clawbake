@@ -21,9 +21,6 @@ spec:
     - jsonPath: .status.namespace
       name: Namespace
       type: string
-    - jsonPath: .status.url
-      name: URL
-      type: string
     - jsonPath: .metadata.creationTimestamp
       name: Age
       type: date
@@ -51,19 +48,10 @@ spec:
           spec:
             description: ClawInstanceSpec defines the desired state of a ClawInstance.
             properties:
-              displayName:
-                type: string
               gatewayToken:
                 type: string
               image:
                 type: string
-              ingress:
-                properties:
-                  enabled:
-                    type: boolean
-                  host:
-                    type: string
-                type: object
               resources:
                 properties:
                   limits:
@@ -91,7 +79,6 @@ spec:
               userId:
                 type: string
             required:
-            - displayName
             - image
             - userId
             type: object
@@ -157,8 +144,6 @@ spec:
               namespace:
                 type: string
               phase:
-                type: string
-              url:
                 type: string
             type: object
         type: object

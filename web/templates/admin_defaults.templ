@@ -34,10 +34,6 @@ templ AdminDefaults(defaults database.InstanceDefault, isAdmin bool) {
 				Storage Size
 				<input type="text" name="storageSize" value={ defaults.StorageSize }/>
 			</label>
-			<label>
-				Ingress Domain
-				<input type="text" name="ingressDomain" value={ defaults.IngressDomain }/>
-			</label>
 			<button type="submit">Save</button>
 		</form>
 	}

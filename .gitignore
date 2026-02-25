@@ -4,3 +4,4 @@
 !.env.example
 tmp/
 bin/
+.playwright-cli/

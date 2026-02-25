@@ -5,6 +5,7 @@ import (
 	"errors"
 	"log"
 	"net/http"
+	"strings"
 
 	"github.com/gorilla/sessions"
 	"github.com/jackc/pgx/v5"
@@ -21,12 +22,12 @@ type DevAuth struct {
 	db    *database.Queries
 }
 
-func NewDevAuth(sessionSecret string, db *database.Queries) *DevAuth {
+func NewDevAuth(sessionSecret, baseURL string, db *database.Queries) *DevAuth {
 	if sessionSecret == "" {
 		sessionSecret = "dev-secret-key-not-for-production"
 	}
 	store := sessions.NewCookieStore([]byte(sessionSecret))
-	store.Options.Secure = false
+	store.Options.Secure = strings.HasPrefix(baseURL, "https://")
 	store.Options.SameSite = http.SameSiteLaxMode
 	return &DevAuth{
 		store: store,

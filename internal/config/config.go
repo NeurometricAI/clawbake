@@ -1,13 +1,11 @@
 package config
 
-import (
-	"fmt"
-	"os"
-)
+import "os"
 
 type Config struct {
 	Port               string
 	DatabaseURL        string
+	BaseURL            string
 	OIDCIssuer         string
 	OIDCClientID       string
 	OIDCClientSecret   string
@@ -16,9 +14,6 @@ type Config struct {
 	SlackBotToken      string
 	SlackSigningSecret string
 	KubeNamespace      string
-	IngressDomain      string
-	IngressScheme      string
-	IngressPort        string
 
 	InstanceDefaultImage         string
 	InstanceDefaultCPURequest    string
@@ -32,6 +27,7 @@ func Load() *Config {
 	return &Config{
 		Port:               envOrDefault("PORT", "8080"),
 		DatabaseURL:        os.Getenv("DATABASE_URL"),
+		BaseURL:            os.Getenv("BASE_URL"),
 		OIDCIssuer:         os.Getenv("OIDC_ISSUER"),
 		OIDCClientID:       os.Getenv("OIDC_CLIENT_ID"),
 		OIDCClientSecret:   os.Getenv("OIDC_CLIENT_SECRET"),
@@ -40,9 +36,6 @@ func Load() *Config {
 		SlackBotToken:      os.Getenv("SLACK_BOT_TOKEN"),
 		SlackSigningSecret: os.Getenv("SLACK_SIGNING_SECRET"),
 		KubeNamespace:      envOrDefault("KUBE_NAMESPACE", "clawbake"),
-		IngressDomain:      envOrDefault("INGRESS_DOMAIN", "claw.example.com"),
-		IngressScheme:      envOrDefault("INGRESS_SCHEME", "https"),
-		IngressPort:        os.Getenv("INGRESS_PORT"),
 
 		InstanceDefaultImage:         os.Getenv("INSTANCE_DEFAULT_IMAGE"),
 		InstanceDefaultCPURequest:    os.Getenv("INSTANCE_DEFAULT_CPU_REQUEST"),
@@ -51,14 +44,6 @@ func Load() *Config {
 		InstanceDefaultMemoryLimit:   os.Getenv("INSTANCE_DEFAULT_MEMORY_LIMIT"),
 		InstanceDefaultStorageSize:   os.Getenv("INSTANCE_DEFAULT_STORAGE_SIZE"),
 	}
-}
-
-// BuildIngressURL constructs a full URL from scheme, host, and optional port.
-func BuildIngressURL(scheme, host, port string) string {
-	if port != "" {
-		return fmt.Sprintf("%s://%s:%s", scheme, host, port)
-	}
-	return fmt.Sprintf("%s://%s", scheme, host)
 }
 
 func envOrDefault(key, defaultVal string) string {

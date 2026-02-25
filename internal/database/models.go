@@ -16,18 +16,16 @@ type InstanceDefault struct {
 	CpuLimit      string             `json:"cpu_limit"`
 	MemoryLimit   string             `json:"memory_limit"`
 	StorageSize   string             `json:"storage_size"`
-	IngressDomain string             `json:"ingress_domain"`
 	UpdatedAt     pgtype.Timestamptz `json:"updated_at"`
 }
 
 type User struct {
-	ID            pgtype.UUID        `json:"id"`
-	Email         string             `json:"email"`
-	Name          string             `json:"name"`
-	Picture       pgtype.Text        `json:"picture"`
-	Role          string             `json:"role"`
-	OidcSubject   string             `json:"oidc_subject"`
-	CreatedAt     pgtype.Timestamptz `json:"created_at"`
-	UpdatedAt     pgtype.Timestamptz `json:"updated_at"`
-	InstanceLimit int32              `json:"instance_limit"`
+	ID          pgtype.UUID        `json:"id"`
+	Email       string             `json:"email"`
+	Name        string             `json:"name"`
+	Picture     pgtype.Text        `json:"picture"`
+	Role        string             `json:"role"`
+	OidcSubject string             `json:"oidc_subject"`
+	CreatedAt   pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt   pgtype.Timestamptz `json:"updated_at"`
 }

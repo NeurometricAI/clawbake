@@ -2,19 +2,18 @@ package templates
 
 import v1alpha1 "github.com/clawbake/clawbake/api/v1alpha1"
 
-templ Dashboard(instances []v1alpha1.ClawInstance, isAdmin bool, atLimit bool, userNames map[string]string) {
+templ Dashboard(instances []v1alpha1.ClawInstance, isAdmin bool, hasInstance bool, userNames map[string]string) {
 	@Layout("Dashboard", isAdmin) {
 		<div class="dashboard-header">
 			<h1>Instances</h1>
 			<span id="new-instance-btn">
-				if !atLimit {
-					<button hx-get="/ui/instances/new" hx-target="#create-form" hx-swap="innerHTML">
-						New Instance
+				if !hasInstance {
+					<button hx-post="/ui/instances" hx-target="#instance-list" hx-swap="innerHTML">
+						Create Instance
 					</button>
 				}
 			</span>
 		</div>
-		<div id="create-form"></div>
 		<div id="instance-list">
 			for _, inst := range instances {
 				@InstanceCard(inst, userNames)

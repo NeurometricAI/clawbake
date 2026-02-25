@@ -70,21 +70,6 @@ spec:
                 secretKeyRef:
                   name: {{ include "clawbake.fullname" . }}
                   key: session-secret
-            - name: INGRESS_DOMAIN
-              valueFrom:
-                configMapKeyRef:
-                  name: {{ include "clawbake.fullname" . }}
-                  key: ingress-domain
-            - name: INGRESS_SCHEME
-              valueFrom:
-                configMapKeyRef:
-                  name: {{ include "clawbake.fullname" . }}
-                  key: ingress-scheme
-            - name: INGRESS_PORT
-              valueFrom:
-                configMapKeyRef:
-                  name: {{ include "clawbake.fullname" . }}
-                  key: ingress-port
             - name: INSTANCE_DEFAULT_IMAGE
               valueFrom:
                 configMapKeyRef:
@@ -115,6 +100,8 @@ spec:
                 configMapKeyRef:
                   name: {{ include "clawbake.fullname" . }}
                   key: instance-storage-size
+            - name: BASE_URL
+              value: {{ .Values.server.baseURL | default (printf "https://%s" .Values.ingress.host) | quote }}
             {{- if .Values.slack.enabled }}
             - name: SLACK_BOT_TOKEN
               valueFrom:

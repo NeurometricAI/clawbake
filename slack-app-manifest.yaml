@@ -1,0 +1,44 @@
+_metadata:
+  major_version: 1
+  minor_version: 0
+
+display_information:
+  name: Clawbake
+  description: Manage your openclaw instances from Slack
+
+features:
+  app_home:
+    home_tab_enabled: false
+    messages_tab_enabled: true
+    messages_tab_read_only_enabled: false
+  bot_user:
+    display_name: clawbake
+    always_online: true
+  slash_commands:
+    - command: /clawbake
+      # Replace YOUR_DOMAIN with your clawbake server domain
+      url: https://YOUR_DOMAIN/slack/commands
+      description: Manage your openclaw instance
+      usage_hint: create / status / delete / help
+      should_escape: false
+
+oauth_config:
+  scopes:
+    bot:
+      - chat:write
+      - commands
+      - users:read
+      - users:read.email
+      - im:history
+      - app_mentions:read
+
+settings:
+  event_subscriptions:
+    # Replace YOUR_DOMAIN with your clawbake server domain
+    request_url: https://YOUR_DOMAIN/slack/events
+    bot_events:
+      - app_mention
+      - message.im
+  org_deploy_enabled: false
+  socket_mode_enabled: false
+  token_rotation_enabled: false

@@ -2,6 +2,8 @@ package bot
 
 import (
 	"context"
+	"crypto/rand"
+	"encoding/hex"
 	"fmt"
 	"net/http"
 	"strings"
@@ -33,6 +35,8 @@ func (b *Bot) HandleCommands(c echo.Context) error {
 		return b.handleStatus(ctx, c, cmd)
 	case "delete":
 		return b.handleDelete(ctx, c, cmd)
+	case "open":
+		return b.handleOpen(ctx, c, cmd)
 	default:
 		return b.handleHelp(c)
 	}
@@ -57,7 +61,7 @@ func (b *Bot) handleCreate(ctx context.Context, c echo.Context, cmd slack.SlashC
 
 	instance := &clawbakev1alpha1.ClawInstance{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      fmt.Sprintf("claw-%s", uid),
+			Name:      uid,
 			Namespace: b.namespace,
 			Labels: map[string]string{
 				"clawbake.io/user-id": uid,
@@ -65,9 +69,9 @@ func (b *Bot) handleCreate(ctx context.Context, c echo.Context, cmd slack.SlashC
 			},
 		},
 		Spec: clawbakev1alpha1.ClawInstanceSpec{
-			UserId:      uid,
-			DisplayName: user.Name,
-			Image:       defaults.Image,
+			UserId:       uid,
+			Image:        defaults.Image,
+			GatewayToken: generateToken(),
 			Resources: clawbakev1alpha1.ClawInstanceResources{
 				Requests: clawbakev1alpha1.ResourceList{
 					CPU:    defaults.CpuRequest,
@@ -81,10 +85,6 @@ func (b *Bot) handleCreate(ctx context.Context, c echo.Context, cmd slack.SlashC
 			Storage: clawbakev1alpha1.ClawInstanceStorage{
 				Size: defaults.StorageSize,
 			},
-			Ingress: clawbakev1alpha1.ClawInstanceIngress{
-				Enabled: true,
-				Host:    fmt.Sprintf("%s.%s", uid, b.ingressDomain),
-			},
 		},
 	}
 
@@ -92,9 +92,7 @@ func (b *Bot) handleCreate(ctx context.Context, c echo.Context, cmd slack.SlashC
 		return respondSlack(c, fmt.Sprintf("Failed to create instance: %s", err))
 	}
 
-	return respondSlack(c, fmt.Sprintf(
-		"Creating your openclaw instance! It will be available at https://%s.%s once ready.\nUse `/clawbake status` to check progress.",
-		uid, b.ingressDomain))
+	return respondSlack(c, "Creating your openclaw instance! Access it via the web app once ready.\nUse `/clawbake status` to check progress.")
 }
 
 func (b *Bot) handleStatus(ctx context.Context, c echo.Context, cmd slack.SlashCommand) error {
@@ -110,9 +108,6 @@ func (b *Bot) handleStatus(ctx context.Context, c echo.Context, cmd slack.SlashC
 
 	msg := fmt.Sprintf("*Instance Status*\n• Phase: %s\n• Namespace: %s",
 		instance.Status.Phase, instance.Status.Namespace)
-	if instance.Status.URL != "" {
-		msg += fmt.Sprintf("\n• URL: %s", instance.Status.URL)
-	}
 	return respondSlack(c, msg)
 }
 
@@ -134,12 +129,37 @@ func (b *Bot) handleDelete(ctx context.Context, c echo.Context, cmd slack.SlashC
 	return respondSlack(c, "Your openclaw instance is being deleted.")
 }
 
+func (b *Bot) handleOpen(ctx context.Context, c echo.Context, cmd slack.SlashCommand) error {
+	user, err := b.resolveUser(ctx, cmd.UserID)
+	if err != nil {
+		return respondSlack(c, fmt.Sprintf("Failed to look up your account: %s", err))
+	}
+
+	instance, err := b.getUserInstance(ctx, user.ID.Bytes)
+	if err != nil {
+		return respondSlack(c, "You don't have an openclaw instance. Use `/clawbake create` to create one.")
+	}
+
+	if instance.Status.Phase != "Running" {
+		return respondSlack(c, fmt.Sprintf("Your instance isn't ready yet (status: %s). Try again shortly.", instance.Status.Phase))
+	}
+
+	return respondSlack(c, fmt.Sprintf("Open your dashboard: %s/proxy/", b.baseURL))
+}
+
 func (b *Bot) handleHelp(c echo.Context) error {
 	return respondSlack(c, "*Clawbake Bot Commands*\n"+
 		"• `/clawbake create` - Provision a new openclaw instance\n"+
 		"• `/clawbake status` - Show your instance status\n"+
+		"• `/clawbake open` - Get a link to your instance dashboard\n"+
 		"• `/clawbake delete` - Delete your instance\n"+
 		"• `/clawbake help` - Show this help message")
+}
+
+func generateToken() string {
+	b := make([]byte, 32)
+	rand.Read(b)
+	return hex.EncodeToString(b)
 }
 
 func respondSlack(c echo.Context, text string) error {

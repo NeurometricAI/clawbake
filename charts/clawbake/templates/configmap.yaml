@@ -5,9 +5,6 @@ metadata:
   labels:
     {{- include "clawbake.labels" . | nindent 4 }}
 data:
-  ingress-domain: {{ .Values.instanceDefaults.domain }}
-  ingress-scheme: {{ .Values.instanceDefaults.scheme }}
-  ingress-port: {{ .Values.instanceDefaults.port | quote }}
   instance-default-image: {{ .Values.instanceDefaults.image }}
   instance-cpu-request: {{ .Values.instanceDefaults.cpuRequest }}
   instance-memory-request: {{ .Values.instanceDefaults.memoryRequest }}

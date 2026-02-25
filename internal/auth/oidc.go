@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"net/http"
+	"strings"
 
 	"github.com/coreos/go-oidc/v3/oidc"
 	"github.com/gorilla/sessions"
@@ -33,7 +34,7 @@ type OIDCAuth struct {
 	db           *database.Queries
 }
 
-func NewOIDCAuth(ctx context.Context, issuer, clientID, clientSecret, redirectURL, sessionSecret string, db *database.Queries) (*OIDCAuth, error) {
+func NewOIDCAuth(ctx context.Context, issuer, clientID, clientSecret, redirectURL, sessionSecret, baseURL string, db *database.Queries) (*OIDCAuth, error) {
 	provider, err := oidc.NewProvider(ctx, issuer)
 	if err != nil {
 		return nil, err
@@ -49,6 +50,8 @@ func NewOIDCAuth(ctx context.Context, issuer, clientID, clientSecret, redirectUR
 
 	verifier := provider.Verifier(&oidc.Config{ClientID: clientID})
 	store := sessions.NewCookieStore([]byte(sessionSecret))
+	store.Options.SameSite = http.SameSiteLaxMode
+	store.Options.Secure = strings.HasPrefix(baseURL, "https://")
 
 	return &OIDCAuth{
 		provider:     provider,
@@ -112,15 +115,28 @@ func (a *OIDCAuth) CallbackHandler(c echo.Context) error {
 
 	user, err := a.db.GetUserByOIDCSubject(c.Request().Context(), claims.Sub)
 	if err != nil {
-		user, err = a.db.CreateUser(c.Request().Context(), database.CreateUserParams{
-			Email:       claims.Email,
-			Name:        claims.Name,
-			Picture:     pgtype.Text{String: claims.Picture, Valid: claims.Picture != ""},
-			Role:        "user",
-			OidcSubject: claims.Sub,
-		})
-		if err != nil {
-			return echo.NewHTTPError(http.StatusInternalServerError, "failed to create user")
+		// OIDC subject not found — try matching by email (e.g. Slack bot created user first)
+		user, err = a.db.GetUserByEmail(c.Request().Context(), claims.Email)
+		if err == nil {
+			// Link the OIDC subject to the existing user
+			user, err = a.db.UpdateUser(c.Request().Context(), database.UpdateUserParams{
+				ID:          user.ID,
+				OidcSubject: pgtype.Text{String: claims.Sub, Valid: true},
+			})
+			if err != nil {
+				return echo.NewHTTPError(http.StatusInternalServerError, "failed to link user")
+			}
+		} else {
+			user, err = a.db.CreateUser(c.Request().Context(), database.CreateUserParams{
+				Email:       claims.Email,
+				Name:        claims.Name,
+				Picture:     pgtype.Text{String: claims.Picture, Valid: claims.Picture != ""},
+				Role:        "user",
+				OidcSubject: claims.Sub,
+			})
+			if err != nil {
+				return echo.NewHTTPError(http.StatusInternalServerError, "failed to create user")
+			}
 		}
 	}
 

@@ -13,7 +13,15 @@ func (h *Handler) RegisterRoutes(e *echo.Echo) {
 	e.GET("/healthz", h.HealthCheck)
 	e.Static("/static", "web/static")
 
+	// Slack bot (no auth middleware — uses Slack signature verification)
+	if h.Bot != nil {
+		h.Bot.RegisterRoutes(e.Group("/slack"))
+	}
+
 	if h.Auth != nil {
+		// Intercept WebSocket upgrades at any path and proxy to user's instance
+		e.Use(h.WebSocketMiddleware(h.Auth.RequireAuth))
+
 		e.GET("/auth/login", h.Auth.LoginHandler)
 		e.GET("/auth/callback", h.Auth.CallbackHandler)
 		e.GET("/auth/logout", h.Auth.LogoutHandler)
@@ -23,7 +31,6 @@ func (h *Handler) RegisterRoutes(e *echo.Echo) {
 		api.GET("/instances", h.ListInstances)
 		api.POST("/instances", h.CreateInstance)
 		api.GET("/instances/:id", h.GetInstance)
-		api.PUT("/instances/:id", h.UpdateInstance)
 		api.DELETE("/instances/:id", h.DeleteInstance)
 
 		// Admin API
@@ -31,6 +38,9 @@ func (h *Handler) RegisterRoutes(e *echo.Echo) {
 		admin.GET("/users", h.ListUsers)
 		admin.GET("/defaults", h.GetDefaults)
 		admin.PUT("/defaults", h.UpdateDefaults)
+
+		// Reverse proxy to user's instance
+		e.Any("/proxy/*", h.ProxyToInstance, h.Auth.RequireAuth)
 
 		// UI pages
 		e.GET("/", h.PageDashboard, h.Auth.OptionalAuth)
@@ -50,15 +60,16 @@ func (h *Handler) RegisterRoutes(e *echo.Echo) {
 		}
 
 		ui := e.Group("/ui", h.Auth.OptionalAuth, requireAuthUI)
-		ui.GET("/instances/new", h.PageCreateForm)
 		ui.POST("/instances", h.PageCreateInstance)
 		ui.GET("/instances/:id", h.PageInstanceDetail)
 		ui.DELETE("/instances/:id", h.PageDeleteInstance)
 		ui.GET("/admin/users", h.PageAdminUsers)
-		ui.POST("/admin/users/:id/limit", h.PageUpdateUserLimit)
 		ui.GET("/admin/defaults", h.PageAdminDefaults)
 		ui.POST("/admin/defaults", h.PageUpdateDefaults)
 	} else if h.DevAuth != nil {
+		// Intercept WebSocket upgrades at any path and proxy to user's instance
+		e.Use(h.WebSocketMiddleware(h.DevAuth.RequireAuth))
+
 		e.GET("/auth/dev-login", h.DevAuth.LoginHandler)
 		e.GET("/auth/logout", h.DevAuth.LogoutHandler)
 
@@ -67,7 +78,6 @@ func (h *Handler) RegisterRoutes(e *echo.Echo) {
 		api.GET("/instances", h.ListInstances)
 		api.POST("/instances", h.CreateInstance)
 		api.GET("/instances/:id", h.GetInstance)
-		api.PUT("/instances/:id", h.UpdateInstance)
 		api.DELETE("/instances/:id", h.DeleteInstance)
 
 		// Admin API
@@ -75,6 +85,9 @@ func (h *Handler) RegisterRoutes(e *echo.Echo) {
 		admin.GET("/users", h.ListUsers)
 		admin.GET("/defaults", h.GetDefaults)
 		admin.PUT("/defaults", h.UpdateDefaults)
+
+		// Reverse proxy to user's instance
+		e.Any("/proxy/*", h.ProxyToInstance, h.DevAuth.RequireAuth)
 
 		// UI pages (dev mode)
 		e.GET("/", h.PageDashboard, h.DevAuth.OptionalAuth)
@@ -94,12 +107,10 @@ func (h *Handler) RegisterRoutes(e *echo.Echo) {
 		}
 
 		ui := e.Group("/ui", h.DevAuth.OptionalAuth, requireAuthUI)
-		ui.GET("/instances/new", h.PageCreateForm)
 		ui.POST("/instances", h.PageCreateInstance)
 		ui.GET("/instances/:id", h.PageInstanceDetail)
 		ui.DELETE("/instances/:id", h.PageDeleteInstance)
 		ui.GET("/admin/users", h.PageAdminUsers)
-		ui.POST("/admin/users/:id/limit", h.PageUpdateUserLimit)
 		ui.GET("/admin/defaults", h.PageAdminDefaults)
 		ui.POST("/admin/defaults", h.PageUpdateDefaults)
 	}

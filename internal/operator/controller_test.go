@@ -8,7 +8,6 @@ import (
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
-	networkingv1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes/scheme"
@@ -60,15 +59,13 @@ func newTestInstance() *clawbakev1alpha1.ClawInstance {
 			Namespace: "default",
 		},
 		Spec: clawbakev1alpha1.ClawInstanceSpec{
-			UserId:      "testuser",
-			DisplayName: "Test User",
-			Image:       "ghcr.io/openclaw/openclaw:latest",
+			UserId: "testuser",
+			Image:  "ghcr.io/openclaw/openclaw:latest",
 			Resources: clawbakev1alpha1.ClawInstanceResources{
 				Requests: clawbakev1alpha1.ResourceList{CPU: "100m", Memory: "256Mi"},
 				Limits:   clawbakev1alpha1.ResourceList{CPU: "500m", Memory: "512Mi"},
 			},
 			Storage: clawbakev1alpha1.ClawInstanceStorage{Size: "5Gi"},
-			Ingress: clawbakev1alpha1.ClawInstanceIngress{Enabled: true, Host: "testuser.claw.example.com"},
 		},
 	}
 }
@@ -83,10 +80,9 @@ func TestReconcileCreate(t *testing.T) {
 	}
 
 	reconciler := &ClawInstanceReconciler{
-		Client:        k8sClient,
-		Scheme:        k8sClient.Scheme(),
-		Recorder:      record.NewFakeRecorder(10),
-		IngressScheme: "https",
+		Client:   k8sClient,
+		Scheme:   k8sClient.Scheme(),
+		Recorder: record.NewFakeRecorder(10),
 	}
 
 	req := reconcile.Request{
@@ -130,15 +126,6 @@ func TestReconcileCreate(t *testing.T) {
 		t.Fatalf("expected service to exist: %v", err)
 	}
 
-	// Verify ingress was created
-	ing := &networkingv1.Ingress{}
-	if err := k8sClient.Get(ctx, types.NamespacedName{Name: "openclaw", Namespace: "clawbake-test-instance"}, ing); err != nil {
-		t.Fatalf("expected ingress to exist: %v", err)
-	}
-	if ing.Spec.Rules[0].Host != "testuser.claw.example.com" {
-		t.Errorf("unexpected ingress host: %s", ing.Spec.Rules[0].Host)
-	}
-
 	// Verify PVC was created
 	pvc := &corev1.PersistentVolumeClaim{}
 	if err := k8sClient.Get(ctx, types.NamespacedName{Name: "openclaw-data", Namespace: "clawbake-test-instance"}, pvc); err != nil {
@@ -156,9 +143,6 @@ func TestReconcileCreate(t *testing.T) {
 	if updated.Status.Namespace != "clawbake-test-instance" {
 		t.Errorf("expected namespace clawbake-test-instance, got %s", updated.Status.Namespace)
 	}
-	if updated.Status.URL != "https://testuser.claw.example.com" {
-		t.Errorf("expected URL https://testuser.claw.example.com, got %s", updated.Status.URL)
-	}
 }
 
 func TestReconcileDelete(t *testing.T) {
@@ -171,10 +155,9 @@ func TestReconcileDelete(t *testing.T) {
 	}
 
 	reconciler := &ClawInstanceReconciler{
-		Client:        k8sClient,
-		Scheme:        k8sClient.Scheme(),
-		Recorder:      record.NewFakeRecorder(10),
-		IngressScheme: "https",
+		Client:   k8sClient,
+		Scheme:   k8sClient.Scheme(),
+		Recorder: record.NewFakeRecorder(10),
 	}
 
 	req := reconcile.Request{
@@ -231,10 +214,9 @@ func TestReconcileStatusUpdates(t *testing.T) {
 	}
 
 	reconciler := &ClawInstanceReconciler{
-		Client:        k8sClient,
-		Scheme:        k8sClient.Scheme(),
-		Recorder:      record.NewFakeRecorder(10),
-		IngressScheme: "https",
+		Client:   k8sClient,
+		Scheme:   k8sClient.Scheme(),
+		Recorder: record.NewFakeRecorder(10),
 	}
 
 	req := reconcile.Request{

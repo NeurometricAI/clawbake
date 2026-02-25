@@ -7,12 +7,15 @@ metadata:
     {{- include "clawbake.labels" . | nindent 4 }}
     app.kubernetes.io/component: postgresql
 spec:
-  type: ClusterIP
+  type: {{ .Values.database.internal.serviceType | default "ClusterIP" }}
   ports:
     - port: 5432
       targetPort: postgresql
       protocol: TCP
       name: postgresql
+      {{- if .Values.database.internal.nodePort }}
+      nodePort: {{ .Values.database.internal.nodePort }}
+      {{- end }}
   selector:
     {{- include "clawbake.selectorLabels" . | nindent 4 }}
     app.kubernetes.io/component: postgresql

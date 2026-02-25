@@ -19,6 +19,7 @@ import (
 
 	"github.com/clawbake/clawbake/db"
 	"github.com/clawbake/clawbake/internal/auth"
+	"github.com/clawbake/clawbake/internal/bot"
 	"github.com/clawbake/clawbake/internal/config"
 	"github.com/clawbake/clawbake/internal/database"
 	"github.com/clawbake/clawbake/internal/handler"
@@ -62,12 +63,8 @@ func syncInstanceDefaults(ctx context.Context, db *database.Queries, cfg *config
 		return fmt.Errorf("reading current defaults: %w", err)
 	}
 
-	// Override each field if the env var was set (non-empty)
 	if cfg.InstanceDefaultImage != "" {
 		current.Image = cfg.InstanceDefaultImage
-	}
-	if cfg.IngressDomain != "" {
-		current.IngressDomain = cfg.IngressDomain
 	}
 	if cfg.InstanceDefaultCPURequest != "" {
 		current.CpuRequest = cfg.InstanceDefaultCPURequest
@@ -92,7 +89,6 @@ func syncInstanceDefaults(ctx context.Context, db *database.Queries, cfg *config
 		CpuLimit:      current.CpuLimit,
 		MemoryLimit:   current.MemoryLimit,
 		StorageSize:   current.StorageSize,
-		IngressDomain: current.IngressDomain,
 	})
 	return err
 }
@@ -132,18 +128,24 @@ func main() {
 	var oidcAuth *auth.OIDCAuth
 	var devAuth *auth.DevAuth
 	if cfg.OIDCIssuer != "" {
-		oidcAuth, err = auth.NewOIDCAuth(ctx, cfg.OIDCIssuer, cfg.OIDCClientID, cfg.OIDCClientSecret, cfg.OIDCRedirectURL, cfg.SessionSecret, db)
+		oidcAuth, err = auth.NewOIDCAuth(ctx, cfg.OIDCIssuer, cfg.OIDCClientID, cfg.OIDCClientSecret, cfg.OIDCRedirectURL, cfg.SessionSecret, cfg.BaseURL, db)
 		if err != nil {
 			log.Fatalf("failed to setup OIDC: %v", err)
 		}
 	} else {
 		log.Println("OIDC not configured, using dev login")
-		devAuth = auth.NewDevAuth(cfg.SessionSecret, db)
+		devAuth = auth.NewDevAuth(cfg.SessionSecret, cfg.BaseURL, db)
 	}
 
 	k8sClient, err := k8s.NewClient()
 	if err != nil {
 		log.Fatalf("failed to create k8s client: %v", err)
+	}
+
+	var slackBot *bot.Bot
+	if cfg.SlackBotToken != "" && cfg.SlackSigningSecret != "" {
+		slackBot = bot.New(cfg.SlackBotToken, cfg.SlackSigningSecret, db, k8sClient, cfg.KubeNamespace, cfg.BaseURL)
+		log.Println("Slack bot enabled")
 	}
 
 	h := &handler.Handler{
@@ -152,6 +154,7 @@ func main() {
 		Auth:    oidcAuth,
 		DevAuth: devAuth,
 		Config:  cfg,
+		Bot:     slackBot,
 	}
 
 	e := echo.New()

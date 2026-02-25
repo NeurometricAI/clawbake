@@ -21,7 +21,7 @@ UPDATE users SET
     name = COALESCE(sqlc.narg('name'), name),
     picture = COALESCE(sqlc.narg('picture'), picture),
     role = COALESCE(sqlc.narg('role'), role),
-    instance_limit = COALESCE(sqlc.narg('instance_limit'), instance_limit),
+    oidc_subject = COALESCE(sqlc.narg('oidc_subject'), oidc_subject),
     updated_at = now()
 WHERE id = $1
 RETURNING *;

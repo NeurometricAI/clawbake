@@ -6,7 +6,6 @@ import (
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
-	networkingv1 "k8s.io/api/networking/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -32,16 +31,13 @@ const finalizerName = "clawbake.io/finalizer"
 // +kubebuilder:rbac:groups="",resources=persistentvolumeclaims,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups="",resources=services,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=apps,resources=deployments,verbs=get;list;watch;create;update;patch;delete
-// +kubebuilder:rbac:groups=networking.k8s.io,resources=ingresses,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups="",resources=events,verbs=create;patch
 
 type ClawInstanceReconciler struct {
 	client.Client
-	Scheme                  *runtime.Scheme
-	Recorder                record.EventRecorder
-	IngressScheme           string
-	IngressPort             string
-	AllowInsecureControlUI  bool
+	Scheme                 *runtime.Scheme
+	Recorder               record.EventRecorder
+	AllowInsecureControlUI bool
 }
 
 func (r *ClawInstanceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
@@ -119,26 +115,9 @@ func (r *ClawInstanceReconciler) Reconcile(ctx context.Context, req ctrl.Request
 		return r.setFailed(ctx, &instance, "ServiceFailed", err)
 	}
 
-	if instance.Spec.Ingress.Enabled {
-		if err := r.reconcileIngress(ctx, &instance, namespaceName); err != nil {
-			return r.setFailed(ctx, &instance, "IngressFailed", err)
-		}
-	}
-
 	// Update status to Running
 	instance.Status.Phase = clawbakev1alpha1.PhaseRunning
 	instance.Status.Namespace = namespaceName
-	if instance.Spec.Ingress.Enabled && instance.Spec.Ingress.Host != "" {
-		scheme := r.IngressScheme
-		if scheme == "" {
-			scheme = "https"
-		}
-		if r.IngressPort != "" {
-			instance.Status.URL = fmt.Sprintf("%s://%s:%s", scheme, instance.Spec.Ingress.Host, r.IngressPort)
-		} else {
-			instance.Status.URL = fmt.Sprintf("%s://%s", scheme, instance.Spec.Ingress.Host)
-		}
-	}
 	meta.SetStatusCondition(&instance.Status.Conditions, metav1.Condition{
 		Type:               "Ready",
 		Status:             metav1.ConditionTrue,
@@ -262,7 +241,7 @@ func (r *ClawInstanceReconciler) reconcileDeployment(ctx context.Context, instan
 				{
 					Name:    "write-config",
 					Image:   instance.Spec.Image,
-					Command: []string{"sh", "-c", `echo '{"gateway":{"controlUi":{"allowInsecureAuth":true}}}' > /home/node/.openclaw/openclaw.json`},
+					Command: []string{"sh", "-c", `echo '{"gateway":{"controlUi":{"allowInsecureAuth":true,"dangerouslyDisableDeviceAuth":true}}}' > /home/node/.openclaw/openclaw.json`},
 					VolumeMounts: []corev1.VolumeMount{
 						{Name: "openclaw-config", MountPath: "/home/node/.openclaw"},
 					},
@@ -354,49 +333,6 @@ func (r *ClawInstanceReconciler) reconcileService(ctx context.Context, instance 
 					Port:       18789,
 					TargetPort: intstr.FromString("http"),
 					Protocol:   corev1.ProtocolTCP,
-				},
-			},
-		}
-		return nil
-	})
-	return err
-}
-
-func (r *ClawInstanceReconciler) reconcileIngress(ctx context.Context, instance *clawbakev1alpha1.ClawInstance, namespaceName string) error {
-	ing := &networkingv1.Ingress{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "openclaw",
-			Namespace: namespaceName,
-		},
-	}
-
-	_, err := controllerutil.CreateOrUpdate(ctx, r.Client, ing, func() error {
-		ing.Labels = map[string]string{
-			"clawbake.io/instance": instance.Name,
-		}
-		pathType := networkingv1.PathTypePrefix
-		ing.Spec = networkingv1.IngressSpec{
-			Rules: []networkingv1.IngressRule{
-				{
-					Host: instance.Spec.Ingress.Host,
-					IngressRuleValue: networkingv1.IngressRuleValue{
-						HTTP: &networkingv1.HTTPIngressRuleValue{
-							Paths: []networkingv1.HTTPIngressPath{
-								{
-									Path:     "/",
-									PathType: &pathType,
-									Backend: networkingv1.IngressBackend{
-										Service: &networkingv1.IngressServiceBackend{
-											Name: "openclaw",
-											Port: networkingv1.ServiceBackendPort{
-												Number: 18789,
-											},
-										},
-									},
-								},
-							},
-						},
-					},
 				},
 			},
 		}
