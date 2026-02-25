@@ -6,7 +6,7 @@ func statusClass(phase string) string {
 	switch phase {
 	case "Running":
 		return "running"
-	case "Pending", "Creating":
+	case "Pending", "Creating", "Starting":
 		return "pending"
 	case "Failed":
 		return "failed"

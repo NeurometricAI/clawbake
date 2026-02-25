@@ -3,6 +3,7 @@ package operator
 import (
 	"context"
 	"fmt"
+	"time"
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -115,24 +116,44 @@ func (r *ClawInstanceReconciler) Reconcile(ctx context.Context, req ctrl.Request
 		return r.setFailed(ctx, &instance, "ServiceFailed", err)
 	}
 
-	// Update status to Running
-	instance.Status.Phase = clawbakev1alpha1.PhaseRunning
+	// Check deployment readiness before declaring Running
+	deploy := &appsv1.Deployment{}
+	if err := r.Get(ctx, types.NamespacedName{Name: "openclaw", Namespace: namespaceName}, deploy); err != nil {
+		return ctrl.Result{}, err
+	}
+
 	instance.Status.Namespace = namespaceName
+
+	if deploy.Status.ReadyReplicas >= 1 {
+		instance.Status.Phase = clawbakev1alpha1.PhaseRunning
+		meta.SetStatusCondition(&instance.Status.Conditions, metav1.Condition{
+			Type:               "Ready",
+			Status:             metav1.ConditionTrue,
+			Reason:             "ReconcileComplete",
+			Message:            "All resources reconciled successfully",
+			ObservedGeneration: instance.Generation,
+		})
+		if err := r.Status().Update(ctx, &instance); err != nil {
+			return ctrl.Result{}, err
+		}
+		r.Recorder.Event(&instance, corev1.EventTypeNormal, "Reconciled", "All resources reconciled successfully")
+		logger.Info("Successfully reconciled ClawInstance", "userId", instance.Spec.UserId, "namespace", namespaceName)
+		return ctrl.Result{}, nil
+	}
+
+	// Not ready yet — set Starting and requeue
+	instance.Status.Phase = clawbakev1alpha1.PhaseStarting
 	meta.SetStatusCondition(&instance.Status.Conditions, metav1.Condition{
 		Type:               "Ready",
-		Status:             metav1.ConditionTrue,
-		Reason:             "ReconcileComplete",
-		Message:            "All resources reconciled successfully",
+		Status:             metav1.ConditionFalse,
+		Reason:             "WaitingForReady",
+		Message:            "Waiting for deployment to become ready",
 		ObservedGeneration: instance.Generation,
 	})
 	if err := r.Status().Update(ctx, &instance); err != nil {
 		return ctrl.Result{}, err
 	}
-
-	r.Recorder.Event(&instance, corev1.EventTypeNormal, "Reconciled", "All resources reconciled successfully")
-	logger.Info("Successfully reconciled ClawInstance", "userId", instance.Spec.UserId, "namespace", namespaceName)
-
-	return ctrl.Result{}, nil
+	return ctrl.Result{RequeueAfter: 5 * time.Second}, nil
 }
 
 func (r *ClawInstanceReconciler) setFailed(ctx context.Context, instance *clawbakev1alpha1.ClawInstance, reason string, err error) (ctrl.Result, error) {
@@ -276,6 +297,16 @@ func (r *ClawInstanceReconciler) reconcileDeployment(ctx context.Context, instan
 							Env: []corev1.EnvVar{
 								{Name: "NODE_OPTIONS", Value: "--max-old-space-size=1536"},
 								{Name: "OPENCLAW_GATEWAY_TOKEN", Value: instance.Spec.GatewayToken},
+							},
+							ReadinessProbe: &corev1.Probe{
+								ProbeHandler: corev1.ProbeHandler{
+									HTTPGet: &corev1.HTTPGetAction{
+										Path: "/__openclaw/control-ui-config.json",
+										Port: intstr.FromInt32(18789),
+									},
+								},
+								InitialDelaySeconds: 5,
+								PeriodSeconds:       5,
 							},
 							Resources:    buildResourceRequirements(instance.Spec.Resources),
 							VolumeMounts: volumeMounts,

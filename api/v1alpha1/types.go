@@ -7,6 +7,7 @@ import (
 const (
 	PhasePending     = "Pending"
 	PhaseCreating    = "Creating"
+	PhaseStarting    = "Starting"
 	PhaseRunning     = "Running"
 	PhaseFailed      = "Failed"
 	PhaseTerminating = "Terminating"

@@ -132,13 +132,13 @@ func TestReconcileCreate(t *testing.T) {
 		t.Fatalf("expected PVC to exist: %v", err)
 	}
 
-	// Verify status was updated
+	// Verify status was updated (no real kubelet in envtest, so deployment has 0 ready replicas)
 	updated := &clawbakev1alpha1.ClawInstance{}
 	if err := k8sClient.Get(ctx, types.NamespacedName{Name: instance.Name, Namespace: instance.Namespace}, updated); err != nil {
 		t.Fatalf("failed to get updated instance: %v", err)
 	}
-	if updated.Status.Phase != clawbakev1alpha1.PhaseRunning {
-		t.Errorf("expected phase Running, got %s", updated.Status.Phase)
+	if updated.Status.Phase != clawbakev1alpha1.PhaseStarting {
+		t.Errorf("expected phase Starting, got %s", updated.Status.Phase)
 	}
 	if updated.Status.Namespace != "clawbake-test-instance" {
 		t.Errorf("expected namespace clawbake-test-instance, got %s", updated.Status.Namespace)
@@ -236,25 +236,110 @@ func TestReconcileStatusUpdates(t *testing.T) {
 		t.Fatalf("failed to get instance: %v", err)
 	}
 
-	// After full reconcile, should be Running
-	if _, err := reconciler.Reconcile(ctx, req); err != nil {
+	// After full reconcile, should be Starting (no ready replicas in envtest)
+	result, err := reconciler.Reconcile(ctx, req)
+	if err != nil {
 		t.Fatalf("reconcile failed: %v", err)
+	}
+	if result.RequeueAfter == 0 {
+		t.Error("expected requeue when deployment is not ready")
 	}
 
 	if err := k8sClient.Get(ctx, types.NamespacedName{Name: instance.Name, Namespace: instance.Namespace}, updated); err != nil {
 		t.Fatalf("failed to get instance: %v", err)
 	}
+	if updated.Status.Phase != clawbakev1alpha1.PhaseStarting {
+		t.Errorf("expected phase Starting, got %s", updated.Status.Phase)
+	}
+
+	// Check Ready condition is False with WaitingForReady reason
+	found := false
+	for _, c := range updated.Status.Conditions {
+		if c.Type == "Ready" {
+			found = true
+			if c.Status != metav1.ConditionFalse {
+				t.Errorf("expected Ready condition to be False, got %s", c.Status)
+			}
+			if c.Reason != "WaitingForReady" {
+				t.Errorf("expected reason WaitingForReady, got %s", c.Reason)
+			}
+		}
+	}
+	if !found {
+		t.Error("expected Ready condition to exist")
+	}
+}
+
+func TestReconcileStartingToRunning(t *testing.T) {
+	k8sClient, _ := setupEnvtest(t)
+	ctx := context.Background()
+
+	instance := newTestInstance()
+	if err := k8sClient.Create(ctx, instance); err != nil {
+		t.Fatalf("failed to create ClawInstance: %v", err)
+	}
+
+	reconciler := &ClawInstanceReconciler{
+		Client:   k8sClient,
+		Scheme:   k8sClient.Scheme(),
+		Recorder: record.NewFakeRecorder(10),
+	}
+
+	req := reconcile.Request{
+		NamespacedName: types.NamespacedName{
+			Name:      instance.Name,
+			Namespace: instance.Namespace,
+		},
+	}
+
+	// First reconcile adds finalizer
+	if _, err := reconciler.Reconcile(ctx, req); err != nil {
+		t.Fatalf("first reconcile failed: %v", err)
+	}
+
+	// Second reconcile creates resources, sets Starting
+	if _, err := reconciler.Reconcile(ctx, req); err != nil {
+		t.Fatalf("second reconcile failed: %v", err)
+	}
+
+	// Simulate deployment becoming ready by updating its status
+	deploy := &appsv1.Deployment{}
+	if err := k8sClient.Get(ctx, types.NamespacedName{Name: "openclaw", Namespace: "clawbake-test-instance"}, deploy); err != nil {
+		t.Fatalf("failed to get deployment: %v", err)
+	}
+	deploy.Status.ReadyReplicas = 1
+	deploy.Status.Replicas = 1
+	if err := k8sClient.Status().Update(ctx, deploy); err != nil {
+		t.Fatalf("failed to update deployment status: %v", err)
+	}
+
+	// Reconcile again — should transition to Running
+	result, err := reconciler.Reconcile(ctx, req)
+	if err != nil {
+		t.Fatalf("reconcile failed: %v", err)
+	}
+	if result.RequeueAfter != 0 {
+		t.Error("expected no requeue when deployment is ready")
+	}
+
+	updated := &clawbakev1alpha1.ClawInstance{}
+	if err := k8sClient.Get(ctx, types.NamespacedName{Name: instance.Name, Namespace: instance.Namespace}, updated); err != nil {
+		t.Fatalf("failed to get updated instance: %v", err)
+	}
 	if updated.Status.Phase != clawbakev1alpha1.PhaseRunning {
 		t.Errorf("expected phase Running, got %s", updated.Status.Phase)
 	}
 
-	// Check Ready condition
+	// Check Ready condition is True
 	found := false
 	for _, c := range updated.Status.Conditions {
 		if c.Type == "Ready" {
 			found = true
 			if c.Status != metav1.ConditionTrue {
 				t.Errorf("expected Ready condition to be True, got %s", c.Status)
+			}
+			if c.Reason != "ReconcileComplete" {
+				t.Errorf("expected reason ReconcileComplete, got %s", c.Reason)
 			}
 		}
 	}
