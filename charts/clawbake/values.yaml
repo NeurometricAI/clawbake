@@ -59,6 +59,7 @@ ingress:
   enabled: true
   className: ""
   host: clawbake.example.com
+  annotations: {}
   tls: []
 
 instanceDefaults:
