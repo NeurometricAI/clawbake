@@ -262,7 +262,7 @@ func (r *ClawInstanceReconciler) reconcileDeployment(ctx context.Context, instan
 				{
 					Name:    "write-config",
 					Image:   instance.Spec.Image,
-					Command: []string{"sh", "-c", `echo '{"gateway":{"controlUi":{"allowInsecureAuth":true,"dangerouslyDisableDeviceAuth":true}}}' > /home/node/.openclaw/openclaw.json`},
+					Command: []string{"sh", "-c", `echo '{"gateway":{"controlUi":{"allowInsecureAuth":true,"dangerouslyDisableDeviceAuth":true,"dangerouslyAllowHostHeaderOriginFallback":true},"http":{"endpoints":{"chatCompletions":{"enabled":true}}}}}' > /home/node/.openclaw/openclaw.json`},
 					VolumeMounts: []corev1.VolumeMount{
 						{Name: "openclaw-config", MountPath: "/home/node/.openclaw"},
 					},

@@ -85,25 +85,34 @@ func (b *Bot) getUserInstance(ctx context.Context, userID [16]byte) (*clawbakev1
 	return nil, fmt.Errorf("no instance found for user %s", uid)
 }
 
-// forwardToInstance sends a message to the user's openclaw instance and returns the response.
+// forwardToInstance sends a message to the user's openclaw instance via the OpenAI-compatible
+// chat completions endpoint and returns the response.
 func (b *Bot) forwardToInstance(ctx context.Context, instance *clawbakev1alpha1.ClawInstance, message string) (string, error) {
 	ns := instance.Status.Namespace
 	if ns == "" {
 		ns = fmt.Sprintf("clawbake-%s", instance.Spec.UserId)
 	}
-	url := fmt.Sprintf("http://openclaw.%s.svc.cluster.local:8080/api/chat", ns)
+	url := fmt.Sprintf("http://openclaw.%s.svc.cluster.local:18789/v1/chat/completions", ns)
 
-	payload, err := json.Marshal(map[string]string{"message": message})
+	type chatMessage struct {
+		Role    string `json:"role"`
+		Content string `json:"content"`
+	}
+	payload, err := json.Marshal(map[string]any{
+		"model":    "openclaw",
+		"messages": []chatMessage{{Role: "user", Content: message}},
+	})
 	if err != nil {
 		return "", fmt.Errorf("marshaling request: %w", err)
 	}
 
-	httpClient := &http.Client{Timeout: 30 * time.Second}
+	httpClient := &http.Client{Timeout: 120 * time.Second}
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewReader(payload))
 	if err != nil {
 		return "", fmt.Errorf("creating request: %w", err)
 	}
 	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", "Bearer "+instance.Spec.GatewayToken)
 
 	resp, err := httpClient.Do(req)
 	if err != nil {
@@ -120,13 +129,21 @@ func (b *Bot) forwardToInstance(ctx context.Context, instance *clawbakev1alpha1.
 		return "", fmt.Errorf("instance returned status %d: %s", resp.StatusCode, string(body))
 	}
 
+	// Parse OpenAI-compatible response
 	var result struct {
-		Response string `json:"response"`
+		Choices []struct {
+			Message struct {
+				Content string `json:"content"`
+			} `json:"message"`
+		} `json:"choices"`
 	}
 	if err := json.Unmarshal(body, &result); err != nil {
 		return string(body), nil
 	}
-	return result.Response, nil
+	if len(result.Choices) > 0 {
+		return result.Choices[0].Message.Content, nil
+	}
+	return string(body), nil
 }
 
 func formatUUID(b [16]byte) string {

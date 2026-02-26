@@ -1,4 +1,4 @@
-.PHONY: all build test lint generate run-server run-operator migrate docker-build k3d-import helm-install clean
+.PHONY: all build test lint generate run-server run-operator migrate docker-build k3d-import helm-install k3d-image-ls clean
 
 # Go settings
 GOBIN := $(shell go env GOPATH)/bin
@@ -98,7 +98,8 @@ helm-install-local:
 	kubectl apply -f charts/clawbake/crds/
 	helm upgrade --install clawbake charts/clawbake \
 		--namespace clawbake --create-namespace \
-		-f charts/clawbake/values-local.yaml
+		-f charts/clawbake/values-local.yaml \
+		$(HELM_EXTRA_ARGS)
 
 helm-template:
 	helm template clawbake charts/clawbake --namespace clawbake
@@ -113,6 +114,9 @@ k3d-create:
 
 k3d-delete:
 	k3d cluster delete clawbake
+
+k3d-image-ls:
+	docker exec k3d-clawbake-server-0 crictl images
 
 ## Port forwarding (access from host via VS Code forwardPorts)
 port-forward:
