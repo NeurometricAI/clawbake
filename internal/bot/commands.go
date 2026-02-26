@@ -5,6 +5,7 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"fmt"
+	"log"
 	"net/http"
 	"strings"
 
@@ -19,6 +20,7 @@ import (
 func (b *Bot) HandleCommands(c echo.Context) error {
 	cmd, err := slack.SlashCommandParse(c.Request())
 	if err != nil {
+		log.Printf("slack: failed to parse slash command: %v", err)
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": "failed to parse command"})
 	}
 
@@ -26,6 +28,8 @@ func (b *Bot) HandleCommands(c echo.Context) error {
 	if len(parts) == 0 {
 		parts = []string{"help"}
 	}
+
+	log.Printf("slack: slash command %q from user=%s", cmd.Text, cmd.UserID)
 
 	ctx := c.Request().Context()
 	switch parts[0] {
