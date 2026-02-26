@@ -6,6 +6,7 @@ import (
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	networkingv1 "k8s.io/api/networking/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -21,6 +22,7 @@ var scheme = runtime.NewScheme()
 func init() {
 	utilruntime.Must(corev1.AddToScheme(scheme))
 	utilruntime.Must(appsv1.AddToScheme(scheme))
+	utilruntime.Must(networkingv1.AddToScheme(scheme))
 	utilruntime.Must(clawbakev1alpha1.AddToScheme(scheme))
 }
 
@@ -51,11 +53,16 @@ func main() {
 		os.Exit(1)
 	}
 
+	serverNamespace := os.Getenv("SERVER_NAMESPACE")
+	if serverNamespace == "" {
+		serverNamespace = "clawbake"
+	}
 	reconciler := &operator.ClawInstanceReconciler{
 		Client:                 mgr.GetClient(),
 		Scheme:                 mgr.GetScheme(),
 		Recorder:               mgr.GetEventRecorderFor("clawbake-operator"),
 		AllowInsecureControlUI: os.Getenv("ALLOW_INSECURE_CONTROL_UI") == "true",
+		ServerNamespace:        serverNamespace,
 	}
 	if err := reconciler.SetupWithManager(mgr); err != nil {
 		logger.Error(err, "unable to create controller", "controller", "ClawInstance")

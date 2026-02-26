@@ -7,6 +7,7 @@ import (
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	networkingv1 "k8s.io/api/networking/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -33,12 +34,14 @@ const finalizerName = "clawbake.io/finalizer"
 // +kubebuilder:rbac:groups="",resources=services,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=apps,resources=deployments,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups="",resources=events,verbs=create;patch
+// +kubebuilder:rbac:groups=networking.k8s.io,resources=networkpolicies,verbs=get;list;watch;create;update;patch;delete
 
 type ClawInstanceReconciler struct {
 	client.Client
 	Scheme                 *runtime.Scheme
 	Recorder               record.EventRecorder
 	AllowInsecureControlUI bool
+	ServerNamespace        string
 }
 
 func (r *ClawInstanceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
@@ -114,6 +117,10 @@ func (r *ClawInstanceReconciler) Reconcile(ctx context.Context, req ctrl.Request
 
 	if err := r.reconcileService(ctx, &instance, namespaceName); err != nil {
 		return r.setFailed(ctx, &instance, "ServiceFailed", err)
+	}
+
+	if err := r.reconcileNetworkPolicy(ctx, &instance, namespaceName); err != nil {
+		return r.setFailed(ctx, &instance, "NetworkPolicyFailed", err)
 	}
 
 	// Check deployment readiness before declaring Running
@@ -364,6 +371,46 @@ func (r *ClawInstanceReconciler) reconcileService(ctx context.Context, instance 
 					Port:       18789,
 					TargetPort: intstr.FromString("http"),
 					Protocol:   corev1.ProtocolTCP,
+				},
+			},
+		}
+		return nil
+	})
+	return err
+}
+
+func (r *ClawInstanceReconciler) reconcileNetworkPolicy(ctx context.Context, instance *clawbakev1alpha1.ClawInstance, namespaceName string) error {
+	np := &networkingv1.NetworkPolicy{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "allow-clawbake-server-only",
+			Namespace: namespaceName,
+		},
+	}
+
+	_, err := controllerutil.CreateOrUpdate(ctx, r.Client, np, func() error {
+		np.Labels = map[string]string{
+			"clawbake.io/instance": instance.Name,
+		}
+		np.Spec = networkingv1.NetworkPolicySpec{
+			PodSelector: metav1.LabelSelector{}, // selects all pods in namespace
+			PolicyTypes: []networkingv1.PolicyType{networkingv1.PolicyTypeIngress},
+			Ingress: []networkingv1.NetworkPolicyIngressRule{
+				{
+					From: []networkingv1.NetworkPolicyPeer{
+						{
+							NamespaceSelector: &metav1.LabelSelector{
+								MatchLabels: map[string]string{
+									"kubernetes.io/metadata.name": r.ServerNamespace,
+								},
+							},
+							PodSelector: &metav1.LabelSelector{
+								MatchLabels: map[string]string{
+									"app.kubernetes.io/name":      "clawbake",
+									"app.kubernetes.io/component": "server",
+								},
+							},
+						},
+					},
 				},
 			},
 		}
