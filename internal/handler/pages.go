@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"net/http"
+	"strings"
 
 	"github.com/a-h/templ"
 	"github.com/labstack/echo/v4"
@@ -13,6 +14,7 @@ import (
 	v1alpha1 "github.com/clawbake/clawbake/api/v1alpha1"
 	"github.com/clawbake/clawbake/internal/auth"
 	"github.com/clawbake/clawbake/internal/database"
+	"github.com/clawbake/clawbake/internal/jsonutil"
 	"github.com/clawbake/clawbake/internal/k8s"
 	"github.com/clawbake/clawbake/web/templates"
 )
@@ -70,7 +72,13 @@ func (h *Handler) PageDashboard(c echo.Context) error {
 		}
 	}
 
-	return render(c, http.StatusOK, templates.Dashboard(instances, user.Role == "admin", hasInstance, userNames))
+	defaults, err := h.DB.GetDefaults(c.Request().Context())
+	if err != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, "failed to load defaults")
+	}
+	placeholders := jsonutil.ExtractPlaceholders(defaults.GatewayConfig)
+
+	return render(c, http.StatusOK, templates.Dashboard(instances, user.Role == "admin", hasInstance, userNames, placeholders))
 }
 
 func (h *Handler) PageCreateInstance(c echo.Context) error {
@@ -88,6 +96,46 @@ func (h *Handler) PageCreateInstance(c echo.Context) error {
 		return echo.NewHTTPError(http.StatusInternalServerError, "failed to load defaults")
 	}
 
+	gatewayConfig := defaults.GatewayConfig
+
+	// Substitute template placeholders if present
+	placeholders := jsonutil.ExtractPlaceholders(gatewayConfig)
+	if len(placeholders) > 0 {
+		values := make(map[string]string, len(placeholders))
+		var missing []string
+		for _, name := range placeholders {
+			val := c.FormValue("var_" + name)
+			if val == "" {
+				missing = append(missing, name)
+			} else {
+				values[name] = val
+			}
+		}
+		if len(missing) > 0 {
+			return echo.NewHTTPError(http.StatusBadRequest, "missing required values: "+strings.Join(missing, ", "))
+		}
+		substituted, err := jsonutil.SubstitutePlaceholders(gatewayConfig, values)
+		if err != nil {
+			return echo.NewHTTPError(http.StatusBadRequest, "failed to substitute placeholders: "+err.Error())
+		}
+		if !json.Valid([]byte(substituted)) {
+			return echo.NewHTTPError(http.StatusBadRequest, "gateway config is not valid JSON after substitution")
+		}
+		gatewayConfig = substituted
+	}
+
+	// Apply optional JSON override on top
+	if override := c.FormValue("gatewayConfigOverride"); override != "" {
+		if !json.Valid([]byte(override)) {
+			return echo.NewHTTPError(http.StatusBadRequest, "gateway config override is not valid JSON")
+		}
+		merged, err := jsonutil.MergeJSON(gatewayConfig, override)
+		if err != nil {
+			return echo.NewHTTPError(http.StatusBadRequest, "failed to merge gateway config: "+err.Error())
+		}
+		gatewayConfig = merged
+	}
+
 	instance := &v1alpha1.ClawInstance{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      uid,
@@ -97,7 +145,7 @@ func (h *Handler) PageCreateInstance(c echo.Context) error {
 			UserId:        uid,
 			Image:         defaults.Image,
 			GatewayToken:  generateToken(),
-			GatewayConfig: defaults.GatewayConfig,
+			GatewayConfig: gatewayConfig,
 			Resources: v1alpha1.ClawInstanceResources{
 				Requests: v1alpha1.ResourceList{
 					CPU:    defaults.CpuRequest,
@@ -121,7 +169,8 @@ func (h *Handler) PageCreateInstance(c echo.Context) error {
 		return echo.NewHTTPError(http.StatusInternalServerError, "failed to create instance")
 	}
 
-	return render(c, http.StatusCreated, templates.InstanceCreated(*instance))
+	c.Response().Header().Set("HX-Redirect", "/")
+	return c.NoContent(http.StatusCreated)
 }
 
 func (h *Handler) PageInstanceDetail(c echo.Context) error {
@@ -142,6 +191,26 @@ func (h *Handler) PageInstanceDetail(c echo.Context) error {
 	}
 
 	return render(c, http.StatusOK, templates.InstanceDetail(*instance, user.Role == "admin"))
+}
+
+func (h *Handler) PageInstanceStatus(c echo.Context) error {
+	id := c.Param("id")
+
+	instance, err := k8s.GetInstance(c.Request().Context(), h.K8s, h.Config.KubeNamespace, id)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusNotFound, "instance not found")
+	}
+
+	user := auth.UserFromContext(c.Request().Context())
+	if user.Role != "admin" {
+		userID, _ := user.ID.Value()
+		uid, _ := userID.(string)
+		if instance.Spec.UserId != uid {
+			return echo.NewHTTPError(http.StatusNotFound, "instance not found")
+		}
+	}
+
+	return render(c, http.StatusOK, templates.StatusBadge(*instance))
 }
 
 func (h *Handler) PageDeleteInstance(c echo.Context) error {
@@ -205,11 +274,17 @@ func (h *Handler) PageUpdateDefaults(c echo.Context) error {
 	}
 
 	gatewayConfig := c.FormValue("gatewayConfig")
-	if !json.Valid([]byte(gatewayConfig)) {
+	if placeholders := jsonutil.ExtractPlaceholders(gatewayConfig); len(placeholders) > 0 {
+		if err := jsonutil.ValidateTemplate(gatewayConfig); err != nil {
+			return echo.NewHTTPError(http.StatusBadRequest, "gateway config template is not valid: "+err.Error())
+		}
+	} else if !json.Valid([]byte(gatewayConfig)) {
 		return echo.NewHTTPError(http.StatusBadRequest, "gateway config is not valid JSON")
 	}
-	// Compact the JSON for storage
-	gatewayConfig = compactJSON(gatewayConfig)
+	// Compact the JSON for storage (only if no placeholders, since compacting breaks templates)
+	if len(jsonutil.ExtractPlaceholders(gatewayConfig)) == 0 {
+		gatewayConfig = compactJSON(gatewayConfig)
+	}
 
 	_, err := h.DB.UpdateDefaults(c.Request().Context(), database.UpdateDefaultsParams{
 		Image:         c.FormValue("image"),

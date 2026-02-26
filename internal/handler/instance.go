@@ -3,7 +3,9 @@ package handler
 import (
 	"crypto/rand"
 	"encoding/hex"
+	"encoding/json"
 	"net/http"
+	"strings"
 
 	"github.com/labstack/echo/v4"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -11,6 +13,7 @@ import (
 
 	v1alpha1 "github.com/clawbake/clawbake/api/v1alpha1"
 	"github.com/clawbake/clawbake/internal/auth"
+	"github.com/clawbake/clawbake/internal/jsonutil"
 	"github.com/clawbake/clawbake/internal/k8s"
 )
 
@@ -38,6 +41,11 @@ func (h *Handler) ListInstances(c echo.Context) error {
 	return c.JSON(http.StatusOK, instances)
 }
 
+type createInstanceRequest struct {
+	GatewayConfigOverride string            `json:"gatewayConfigOverride"`
+	PlaceholderValues     map[string]string  `json:"placeholderValues"`
+}
+
 func (h *Handler) CreateInstance(c echo.Context) error {
 	user := auth.UserFromContext(c.Request().Context())
 	userID, _ := user.ID.Value()
@@ -48,9 +56,52 @@ func (h *Handler) CreateInstance(c echo.Context) error {
 		return echo.NewHTTPError(http.StatusConflict, "instance already exists")
 	}
 
+	var req createInstanceRequest
+	if c.Request().ContentLength > 0 {
+		if err := c.Bind(&req); err != nil {
+			return echo.NewHTTPError(http.StatusBadRequest, "invalid request body")
+		}
+	}
+
 	defaults, err := h.DB.GetDefaults(c.Request().Context())
 	if err != nil {
 		return echo.NewHTTPError(http.StatusInternalServerError, "failed to load defaults")
+	}
+
+	gatewayConfig := defaults.GatewayConfig
+
+	// Substitute template placeholders if present
+	placeholders := jsonutil.ExtractPlaceholders(gatewayConfig)
+	if len(placeholders) > 0 {
+		var missing []string
+		for _, name := range placeholders {
+			if _, ok := req.PlaceholderValues[name]; !ok {
+				missing = append(missing, name)
+			}
+		}
+		if len(missing) > 0 {
+			return echo.NewHTTPError(http.StatusBadRequest, "missing required placeholder values: "+strings.Join(missing, ", "))
+		}
+		substituted, err := jsonutil.SubstitutePlaceholders(gatewayConfig, req.PlaceholderValues)
+		if err != nil {
+			return echo.NewHTTPError(http.StatusBadRequest, "failed to substitute placeholders: "+err.Error())
+		}
+		if !json.Valid([]byte(substituted)) {
+			return echo.NewHTTPError(http.StatusBadRequest, "gateway config is not valid JSON after substitution")
+		}
+		gatewayConfig = substituted
+	}
+
+	// Apply optional JSON override on top
+	if req.GatewayConfigOverride != "" {
+		if !json.Valid([]byte(req.GatewayConfigOverride)) {
+			return echo.NewHTTPError(http.StatusBadRequest, "gateway config override is not valid JSON")
+		}
+		merged, err := jsonutil.MergeJSON(gatewayConfig, req.GatewayConfigOverride)
+		if err != nil {
+			return echo.NewHTTPError(http.StatusBadRequest, "failed to merge gateway config: "+err.Error())
+		}
+		gatewayConfig = merged
 	}
 
 	instance := &v1alpha1.ClawInstance{
@@ -59,9 +110,10 @@ func (h *Handler) CreateInstance(c echo.Context) error {
 			Namespace: h.Config.KubeNamespace,
 		},
 		Spec: v1alpha1.ClawInstanceSpec{
-			UserId:       uid,
-			Image:        defaults.Image,
-			GatewayToken: generateToken(),
+			UserId:        uid,
+			Image:         defaults.Image,
+			GatewayToken:  generateToken(),
+			GatewayConfig: gatewayConfig,
 			Resources: v1alpha1.ClawInstanceResources{
 				Requests: v1alpha1.ResourceList{
 					CPU:    defaults.CpuRequest,

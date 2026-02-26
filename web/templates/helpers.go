@@ -20,3 +20,14 @@ func statusClass(phase string) string {
 func conditionStatus(s metav1.ConditionStatus) string {
 	return string(s)
 }
+
+func isTerminalPhase(phase string) bool {
+	return phase == "Running" || phase == "Failed"
+}
+
+func displayPhase(phase string) string {
+	if phase == "" {
+		return "Pending"
+	}
+	return phase
+}

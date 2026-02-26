@@ -44,11 +44,17 @@ templ AdminDefaults(defaults database.InstanceDefault, isAdmin bool) {
 				<button type="button" class="secondary outline" onclick="resetGatewayConfig()">Reset to Default</button>
 			</div>
 			<script>
+				function stripPlaceholders(s) {
+					// Replace "{{NAME}}" (with surrounding quotes) or {{NAME}} (bare) with a safe dummy
+					return s.replace(/"?\{\{[A-Z][A-Z0-9_]*\}\}"?/g, '"__placeholder__"');
+				}
+
 				function validateGatewayConfig() {
 					var el = document.getElementById('gatewayConfig');
 					var errEl = document.getElementById('gatewayConfigError');
+					var val = stripPlaceholders(el.value);
 					try {
-						JSON.parse(el.value);
+						JSON.parse(val);
 						errEl.style.display = 'none';
 						return true;
 					} catch (e) {
@@ -62,9 +68,14 @@ templ AdminDefaults(defaults database.InstanceDefault, isAdmin bool) {
 				function formatGatewayConfig() {
 					var el = document.getElementById('gatewayConfig');
 					var errEl = document.getElementById('gatewayConfigError');
+					// Only format if no placeholders (formatting would break them)
+					var hasPlaceholders = /\{\{[A-Z][A-Z0-9_]*\}\}/.test(el.value);
+					var val = hasPlaceholders ? stripPlaceholders(el.value) : el.value;
 					try {
-						var obj = JSON.parse(el.value);
-						el.value = JSON.stringify(obj, null, 2);
+						var obj = JSON.parse(val);
+						if (!hasPlaceholders) {
+							el.value = JSON.stringify(obj, null, 2);
+						}
 						errEl.style.display = 'none';
 					} catch (e) {
 						errEl.textContent = 'Invalid JSON: ' + e.message;

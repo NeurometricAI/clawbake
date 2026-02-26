@@ -100,6 +100,11 @@ spec:
                 configMapKeyRef:
                   name: {{ include "clawbake.fullname" . }}
                   key: instance-storage-size
+            - name: INSTANCE_DEFAULT_GATEWAY_CONFIG
+              valueFrom:
+                configMapKeyRef:
+                  name: {{ include "clawbake.fullname" . }}
+                  key: instance-gateway-config
             - name: BASE_URL
               value: {{ .Values.server.baseURL | default (printf "https://%s" .Values.ingress.host) | quote }}
             {{- if .Values.slack.enabled }}

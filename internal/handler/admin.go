@@ -7,7 +7,7 @@ import (
 	"github.com/labstack/echo/v4"
 
 	"github.com/clawbake/clawbake/internal/database"
-	"github.com/clawbake/clawbake/internal/operator"
+	"github.com/clawbake/clawbake/internal/jsonutil"
 )
 
 func (h *Handler) ListUsers(c echo.Context) error {
@@ -42,7 +42,11 @@ func (h *Handler) UpdateDefaults(c echo.Context) error {
 		return echo.NewHTTPError(http.StatusBadRequest, "invalid request body")
 	}
 
-	if !json.Valid([]byte(req.GatewayConfig)) {
+	if placeholders := jsonutil.ExtractPlaceholders(req.GatewayConfig); len(placeholders) > 0 {
+		if err := jsonutil.ValidateTemplate(req.GatewayConfig); err != nil {
+			return echo.NewHTTPError(http.StatusBadRequest, "gateway config template is not valid: "+err.Error())
+		}
+	} else if !json.Valid([]byte(req.GatewayConfig)) {
 		return echo.NewHTTPError(http.StatusBadRequest, "gateway config is not valid JSON")
 	}
 
@@ -64,6 +68,6 @@ func (h *Handler) UpdateDefaults(c echo.Context) error {
 
 func (h *Handler) GetDefaultGatewayConfig(c echo.Context) error {
 	return c.JSON(http.StatusOK, map[string]string{
-		"gatewayConfig": operator.DefaultGatewayConfig,
+		"gatewayConfig": h.Config.InstanceDefaultGatewayConfig,
 	})
 }

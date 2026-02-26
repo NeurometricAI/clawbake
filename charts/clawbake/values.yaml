@@ -69,4 +69,20 @@ instanceDefaults:
   cpuLimit: 2000m
   memoryLimit: 2Gi
   storageSize: 5Gi
-  allowInsecureControlUI: false
+  gatewayConfig: |
+    {
+      "gateway": {
+        "controlUi": {
+          "allowInsecureAuth": true,
+          "dangerouslyDisableDeviceAuth": true,
+          "dangerouslyAllowHostHeaderOriginFallback": true
+        },
+        "http": {
+          "endpoints": {
+            "chatCompletions": {
+              "enabled": true
+            }
+          }
+        }
+      }
+    }

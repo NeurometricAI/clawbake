@@ -20,7 +20,7 @@ templ InstanceDetail(instance v1alpha1.ClawInstance, isAdmin bool) {
 			<header>
 				<div class="instance-header">
 					<h1>Instance</h1>
-					<span class={ "badge badge-" + statusClass(instance.Status.Phase) }>{ instance.Status.Phase }</span>
+					@StatusBadge(instance)
 				</div>
 			</header>
 			<h3>Specification</h3>

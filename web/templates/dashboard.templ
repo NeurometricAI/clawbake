@@ -2,15 +2,98 @@ package templates
 
 import v1alpha1 "github.com/clawbake/clawbake/api/v1alpha1"
 
-templ Dashboard(instances []v1alpha1.ClawInstance, isAdmin bool, hasInstance bool, userNames map[string]string) {
+templ Dashboard(instances []v1alpha1.ClawInstance, isAdmin bool, hasInstance bool, userNames map[string]string, placeholders []string) {
 	@Layout("Dashboard", isAdmin) {
 		<div class="dashboard-header">
 			<h1>Instances</h1>
 			<span id="new-instance-btn">
 				if !hasInstance {
-					<button hx-post="/ui/instances" hx-target="#instance-list" hx-swap="innerHTML">
+					<button onclick="document.getElementById('create-dialog').showModal()">
 						Create Instance
 					</button>
+					<dialog id="create-dialog">
+						<article>
+							<header>
+								<button aria-label="Close" rel="prev" onclick="document.getElementById('create-dialog').close()"></button>
+								<h3>Create Instance</h3>
+							</header>
+							<form method="POST" action="/ui/instances" id="create-instance-form" onsubmit="return validateCreateForm()">
+								if len(placeholders) > 0 {
+									<fieldset>
+										<legend>Required Configuration</legend>
+										for _, p := range placeholders {
+											<label>
+												{ p }
+												<input type="text" name={ "var_" + p } required placeholder={ "Enter value for " + p }/>
+											</label>
+										}
+									</fieldset>
+								}
+								<label>
+									Gateway Config Override (optional)
+									<textarea
+										name="gatewayConfigOverride"
+										id="gatewayConfigOverride"
+										rows="10"
+										style="font-family: monospace; font-size: 0.85rem;"
+										placeholder='Optional JSON merged over admin defaults, e.g.&#10;{"gateway":{"providers":{"openai":{"apiKey":"sk-..."}}}}'
+									></textarea>
+									<small id="overrideError" style="color: var(--pico-del-color); display: none;"></small>
+								</label>
+								<script>
+									function validateCreateForm() {
+										var form = document.getElementById('create-instance-form');
+										// Check required fields (placeholder inputs)
+										var inputs = form.querySelectorAll('input[required]');
+										for (var i = 0; i < inputs.length; i++) {
+											if (!inputs[i].value.trim()) {
+												inputs[i].setAttribute('aria-invalid', 'true');
+												inputs[i].focus();
+												return false;
+											}
+											inputs[i].removeAttribute('aria-invalid');
+										}
+										// Check JSON override
+										var el = document.getElementById('gatewayConfigOverride');
+										var errEl = document.getElementById('overrideError');
+										var val = el.value.trim();
+										if (val === '') {
+											errEl.style.display = 'none';
+											return true;
+										}
+										try {
+											JSON.parse(val);
+											errEl.style.display = 'none';
+											return true;
+										} catch (e) {
+											errEl.textContent = 'Invalid JSON: ' + e.message;
+											errEl.style.display = 'block';
+											el.focus();
+											return false;
+										}
+									}
+									// Also validate on htmx before-request
+									document.addEventListener('htmx:configRequest', function(evt) {
+										if (evt.detail.elt.closest('#create-instance-form')) {
+											if (!validateCreateForm()) {
+												evt.preventDefault();
+											}
+										}
+									});
+								</script>
+								<footer>
+									<button type="button" class="secondary" onclick="document.getElementById('create-dialog').close()">Cancel</button>
+									<button
+										type="submit"
+										hx-post="/ui/instances"
+										hx-target="#instance-list"
+										hx-swap="innerHTML"
+										hx-include="#create-instance-form"
+									>Create</button>
+								</footer>
+							</form>
+						</article>
+					</dialog>
 				}
 			</span>
 		</div>

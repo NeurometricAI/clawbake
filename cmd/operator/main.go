@@ -58,11 +58,11 @@ func main() {
 		serverNamespace = "clawbake"
 	}
 	reconciler := &operator.ClawInstanceReconciler{
-		Client:                 mgr.GetClient(),
-		Scheme:                 mgr.GetScheme(),
-		Recorder:               mgr.GetEventRecorderFor("clawbake-operator"),
-		AllowInsecureControlUI: os.Getenv("ALLOW_INSECURE_CONTROL_UI") == "true",
-		ServerNamespace:        serverNamespace,
+		Client:               mgr.GetClient(),
+		Scheme:               mgr.GetScheme(),
+		Recorder:             mgr.GetEventRecorderFor("clawbake-operator"),
+		ServerNamespace:      serverNamespace,
+		DefaultGatewayConfig: os.Getenv("DEFAULT_GATEWAY_CONFIG"),
 	}
 	if err := reconciler.SetupWithManager(mgr); err != nil {
 		logger.Error(err, "unable to create controller", "controller", "ClawInstance")

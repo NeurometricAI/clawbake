@@ -11,4 +11,5 @@ data:
   instance-cpu-limit: {{ .Values.instanceDefaults.cpuLimit }}
   instance-memory-limit: {{ .Values.instanceDefaults.memoryLimit }}
   instance-storage-size: {{ .Values.instanceDefaults.storageSize }}
-  instance-allow-insecure-control-ui: {{ .Values.instanceDefaults.allowInsecureControlUI | quote }}
+  instance-gateway-config: {{ .Values.instanceDefaults.gatewayConfig | quote }}
+

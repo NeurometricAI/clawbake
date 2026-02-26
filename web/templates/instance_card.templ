@@ -9,12 +9,24 @@ templ InstanceCreated(instance v1alpha1.ClawInstance) {
 	<span id="new-instance-btn" hx-swap-oob="innerHTML"></span>
 }
 
+templ StatusBadge(instance v1alpha1.ClawInstance) {
+	<span
+		id={ "status-" + instance.Name }
+		class={ "badge badge-" + statusClass(instance.Status.Phase) }
+		if !isTerminalPhase(instance.Status.Phase) {
+			hx-get={ "/ui/instances/" + instance.Name + "/status" }
+			hx-swap="outerHTML"
+			hx-trigger="every 5s"
+		}
+	>{ displayPhase(instance.Status.Phase) }</span>
+}
+
 templ InstanceCard(instance v1alpha1.ClawInstance, userNames map[string]string) {
 	<article id={ "instance-" + instance.Name }>
 		<header>
 			<div class="instance-header">
 				<h3><a href={ templ.SafeURL("/ui/instances/" + instance.Name) }>Instance</a></h3>
-				<span class={ "badge badge-" + statusClass(instance.Status.Phase) }>{ instance.Status.Phase }</span>
+				@StatusBadge(instance)
 			</div>
 		</header>
 		if name, ok := userNames[instance.Spec.UserId]; ok {

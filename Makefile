@@ -1,4 +1,4 @@
-.PHONY: all build test lint generate run-server run-operator migrate docker-build k3d-import helm-install k3d-image-ls clean
+.PHONY: all build test lint generate run-server run-operator migrate docker-build k3d-import helm-install helm-install-local helm-restart-local helm-clean-local helm-template k3d-image-ls clean
 
 # Go settings
 GOBIN := $(shell go env GOPATH)/bin
@@ -11,7 +11,9 @@ KUBEBUILDER_ASSETS ?= $(shell setup-envtest use $(ENVTEST_K8S_VERSION) -p path 2
 
 # Image settings
 IMG ?= clawbake
-TAG ?= dev
+ifndef TAG
+TAG := dev-$(shell date +%s)
+endif
 
 all: generate build test
 
@@ -94,12 +96,24 @@ helm-install:
 	helm upgrade --install clawbake charts/clawbake \
 		--namespace clawbake --create-namespace
 
-helm-install-local:
+helm-install-local: k3d-import
 	kubectl apply -f charts/clawbake/crds/
 	helm upgrade --install clawbake charts/clawbake \
 		--namespace clawbake --create-namespace \
 		-f charts/clawbake/values-local.yaml \
+		--set server.image.tag=$(TAG),operator.image.tag=$(TAG) \
 		$(HELM_EXTRA_ARGS)
+
+helm-restart-local:
+	kubectl rollout restart deployment/clawbake-server deployment/clawbake-operator -n clawbake
+	kubectl rollout status deployment/clawbake-server deployment/clawbake-operator -n clawbake
+
+helm-clean-local:
+	-helm uninstall clawbake --namespace clawbake
+	-kubectl delete clawinstances --all -n clawbake
+	-kubectl delete namespace clawbake
+	-kubectl delete namespaces -l clawbake.io/instance=true
+	-kubectl delete crd clawinstances.clawbake.io
 
 helm-template:
 	helm template clawbake charts/clawbake --namespace clawbake

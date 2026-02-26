@@ -30,10 +30,10 @@ spec:
                 configMapKeyRef:
                   name: {{ include "clawbake.fullname" . }}
                   key: instance-default-image
-            - name: ALLOW_INSECURE_CONTROL_UI
+            - name: DEFAULT_GATEWAY_CONFIG
               valueFrom:
                 configMapKeyRef:
                   name: {{ include "clawbake.fullname" . }}
-                  key: instance-allow-insecure-control-ui
+                  key: instance-gateway-config
           resources:
             {{- toYaml .Values.operator.resources | nindent 12 }}

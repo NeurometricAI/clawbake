@@ -21,6 +21,7 @@ type Config struct {
 	InstanceDefaultCPULimit      string
 	InstanceDefaultMemoryLimit   string
 	InstanceDefaultStorageSize   string
+	InstanceDefaultGatewayConfig string
 }
 
 func Load() *Config {
@@ -43,6 +44,7 @@ func Load() *Config {
 		InstanceDefaultCPULimit:      os.Getenv("INSTANCE_DEFAULT_CPU_LIMIT"),
 		InstanceDefaultMemoryLimit:   os.Getenv("INSTANCE_DEFAULT_MEMORY_LIMIT"),
 		InstanceDefaultStorageSize:   os.Getenv("INSTANCE_DEFAULT_STORAGE_SIZE"),
+		InstanceDefaultGatewayConfig: os.Getenv("INSTANCE_DEFAULT_GATEWAY_CONFIG"),
 	}
 }
 

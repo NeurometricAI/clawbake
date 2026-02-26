@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
@@ -14,6 +15,8 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	clawbakev1alpha1 "github.com/clawbake/clawbake/api/v1alpha1"
+	"github.com/clawbake/clawbake/internal/database"
+	"github.com/clawbake/clawbake/internal/jsonutil"
 )
 
 // HandleCommands processes Slack slash commands (/clawbake).
@@ -42,8 +45,58 @@ func (b *Bot) HandleCommands(c echo.Context) error {
 	case "open":
 		return b.handleOpen(ctx, c, cmd)
 	default:
-		return b.handleHelp(c)
+		return b.handleHelp(ctx, c)
 	}
+}
+
+// parseCreateArgs parses the arguments after "create" in a slash command.
+// It supports KEY=value pairs for placeholders and json={...} for override.
+// Bare {...} still works as override when no KEY=value pairs are present.
+func parseCreateArgs(text string) (placeholderValues map[string]string, jsonOverride string, err error) {
+	args := strings.TrimSpace(strings.TrimPrefix(strings.TrimSpace(text), "create"))
+	if args == "" {
+		return nil, "", nil
+	}
+
+	// Check for json= prefix to extract override
+	placeholderValues = make(map[string]string)
+	var remaining []string
+
+	parts := strings.Fields(args)
+	for i := 0; i < len(parts); i++ {
+		part := parts[i]
+
+		// Handle json={...} — everything from "json=" onward is the JSON override
+		if strings.HasPrefix(part, "json=") {
+			jsonOverride = strings.TrimPrefix(part, "json=")
+			// If the JSON contains spaces, rejoin the rest
+			if i+1 < len(parts) {
+				jsonOverride = jsonOverride + " " + strings.Join(parts[i+1:], " ")
+			}
+			break
+		}
+
+		// Handle KEY=value pairs (split on first = so values can contain =)
+		if idx := strings.Index(part, "="); idx > 0 {
+			key := part[:idx]
+			value := part[idx+1:]
+			placeholderValues[key] = value
+		} else {
+			remaining = append(remaining, part)
+			// If this starts with {, treat rest as bare JSON override (backwards compat)
+			if strings.HasPrefix(part, "{") {
+				jsonOverride = strings.Join(append([]string{part}, parts[i+1:]...), " ")
+				break
+			}
+		}
+	}
+
+	_ = remaining
+	if len(placeholderValues) == 0 {
+		placeholderValues = nil
+	}
+
+	return placeholderValues, jsonOverride, nil
 }
 
 func (b *Bot) handleCreate(ctx context.Context, c echo.Context, cmd slack.SlashCommand) error {
@@ -63,6 +116,52 @@ func (b *Bot) handleCreate(ctx context.Context, c echo.Context, cmd slack.SlashC
 		return respondSlack(c, "Failed to get instance defaults. Please contact an admin.")
 	}
 
+	placeholderValues, jsonOverride, err := parseCreateArgs(cmd.Text)
+	if err != nil {
+		return respondSlack(c, fmt.Sprintf("Invalid arguments: %s", err))
+	}
+
+	gatewayConfig := defaults.GatewayConfig
+
+	// Substitute template placeholders if present
+	placeholders := jsonutil.ExtractPlaceholders(gatewayConfig)
+	if len(placeholders) > 0 {
+		var missing []string
+		for _, name := range placeholders {
+			if _, ok := placeholderValues[name]; !ok {
+				missing = append(missing, name)
+			}
+		}
+		if len(missing) > 0 {
+			usage := "Usage: `/clawbake create"
+			for _, p := range placeholders {
+				usage += fmt.Sprintf(" %s=value", p)
+			}
+			usage += "`"
+			return respondSlack(c, fmt.Sprintf("Missing required values: %s\n%s", strings.Join(missing, ", "), usage))
+		}
+		substituted, err := jsonutil.SubstitutePlaceholders(gatewayConfig, placeholderValues)
+		if err != nil {
+			return respondSlack(c, fmt.Sprintf("Failed to substitute placeholders: %s", err))
+		}
+		if !json.Valid([]byte(substituted)) {
+			return respondSlack(c, "Gateway config is not valid JSON after substitution.")
+		}
+		gatewayConfig = substituted
+	}
+
+	// Apply optional JSON override on top
+	if jsonOverride != "" {
+		if !json.Valid([]byte(jsonOverride)) {
+			return respondSlack(c, "Invalid JSON override. Usage: `/clawbake create json={\"key\":\"value\"}`")
+		}
+		merged, err := jsonutil.MergeJSON(gatewayConfig, jsonOverride)
+		if err != nil {
+			return respondSlack(c, fmt.Sprintf("Failed to merge config override: %s", err))
+		}
+		gatewayConfig = merged
+	}
+
 	instance := &clawbakev1alpha1.ClawInstance{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      uid,
@@ -73,9 +172,10 @@ func (b *Bot) handleCreate(ctx context.Context, c echo.Context, cmd slack.SlashC
 			},
 		},
 		Spec: clawbakev1alpha1.ClawInstanceSpec{
-			UserId:       uid,
-			Image:        defaults.Image,
-			GatewayToken: generateToken(),
+			UserId:        uid,
+			Image:         defaults.Image,
+			GatewayToken:  generateToken(),
+			GatewayConfig: gatewayConfig,
 			Resources: clawbakev1alpha1.ClawInstanceResources{
 				Requests: clawbakev1alpha1.ResourceList{
 					CPU:    defaults.CpuRequest,
@@ -151,9 +251,33 @@ func (b *Bot) handleOpen(ctx context.Context, c echo.Context, cmd slack.SlashCom
 	return respondSlack(c, fmt.Sprintf("Open your dashboard: %s/proxy/", b.baseURL))
 }
 
-func (b *Bot) handleHelp(c echo.Context) error {
+func (b *Bot) handleHelp(ctx context.Context, c echo.Context) error {
+	createUsage := "• `/clawbake create` - Provision a new openclaw instance\n" +
+		"• `/clawbake create {\"key\":\"value\"}` - Create with gateway config overrides (merged over admin defaults)"
+
+	// Show dynamic usage if admin config has placeholders
+	defaults, err := func() (*database.InstanceDefault, error) {
+		if b.db == nil {
+			return nil, fmt.Errorf("no database")
+		}
+		d, err := b.db.GetDefaults(ctx)
+		return &d, err
+	}()
+	if err == nil {
+		placeholders := jsonutil.ExtractPlaceholders(defaults.GatewayConfig)
+		if len(placeholders) > 0 {
+			example := "• `/clawbake create"
+			for _, p := range placeholders {
+				example += fmt.Sprintf(" %s=value", p)
+			}
+			example += "` - Provision with required config values"
+			createUsage = example + "\n" +
+				"• `/clawbake create " + placeholders[0] + "=value json={\"key\":\"value\"}` - With config values and override"
+		}
+	}
+
 	return respondSlack(c, "*Clawbake Bot Commands*\n"+
-		"• `/clawbake create` - Provision a new openclaw instance\n"+
+		createUsage+"\n"+
 		"• `/clawbake status` - Show your instance status\n"+
 		"• `/clawbake open` - Get a link to your instance dashboard\n"+
 		"• `/clawbake delete` - Delete your instance\n"+

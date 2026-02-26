@@ -10,7 +10,7 @@ import templruntime "github.com/a-h/templ/runtime"
 
 import v1alpha1 "github.com/clawbake/clawbake/api/v1alpha1"
 
-func Dashboard(instances []v1alpha1.ClawInstance, isAdmin bool, hasInstance bool, userNames map[string]string) templ.Component {
+func Dashboard(instances []v1alpha1.ClawInstance, isAdmin bool, hasInstance bool, userNames map[string]string, placeholders []string) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
@@ -48,12 +48,71 @@ func Dashboard(instances []v1alpha1.ClawInstance, isAdmin bool, hasInstance bool
 				return templ_7745c5c3_Err
 			}
 			if !hasInstance {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "<button hx-post=\"/ui/instances\" hx-target=\"#instance-list\" hx-swap=\"innerHTML\">Create Instance</button>")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "<button onclick=\"document.getElementById('create-dialog').showModal()\">Create Instance</button> <dialog id=\"create-dialog\"><article><header><button aria-label=\"Close\" rel=\"prev\" onclick=\"document.getElementById('create-dialog').close()\"></button><h3>Create Instance</h3></header><form method=\"POST\" action=\"/ui/instances\" id=\"create-instance-form\" onsubmit=\"return validateCreateForm()\">")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				if len(placeholders) > 0 {
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "<fieldset><legend>Required Configuration</legend> ")
+					if templ_7745c5c3_Err != nil {
+						return templ_7745c5c3_Err
+					}
+					for _, p := range placeholders {
+						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 4, "<label>")
+						if templ_7745c5c3_Err != nil {
+							return templ_7745c5c3_Err
+						}
+						var templ_7745c5c3_Var3 string
+						templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.JoinStringErrs(p)
+						if templ_7745c5c3_Err != nil {
+							return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/dashboard.templ`, Line: 26, Col: 15}
+						}
+						_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var3))
+						if templ_7745c5c3_Err != nil {
+							return templ_7745c5c3_Err
+						}
+						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, " <input type=\"text\" name=\"")
+						if templ_7745c5c3_Err != nil {
+							return templ_7745c5c3_Err
+						}
+						var templ_7745c5c3_Var4 string
+						templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.JoinStringErrs("var_" + p)
+						if templ_7745c5c3_Err != nil {
+							return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/dashboard.templ`, Line: 27, Col: 48}
+						}
+						_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var4))
+						if templ_7745c5c3_Err != nil {
+							return templ_7745c5c3_Err
+						}
+						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 6, "\" required placeholder=\"")
+						if templ_7745c5c3_Err != nil {
+							return templ_7745c5c3_Err
+						}
+						var templ_7745c5c3_Var5 string
+						templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.JoinStringErrs("Enter value for " + p)
+						if templ_7745c5c3_Err != nil {
+							return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/dashboard.templ`, Line: 27, Col: 96}
+						}
+						_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var5))
+						if templ_7745c5c3_Err != nil {
+							return templ_7745c5c3_Err
+						}
+						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 7, "\"></label>")
+						if templ_7745c5c3_Err != nil {
+							return templ_7745c5c3_Err
+						}
+					}
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 8, "</fieldset>")
+					if templ_7745c5c3_Err != nil {
+						return templ_7745c5c3_Err
+					}
+				}
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 9, "<label>Gateway Config Override (optional) <textarea name=\"gatewayConfigOverride\" id=\"gatewayConfigOverride\" rows=\"10\" style=\"font-family: monospace; font-size: 0.85rem;\" placeholder='Optional JSON merged over admin defaults, e.g.&#10;{\"gateway\":{\"providers\":{\"openai\":{\"apiKey\":\"sk-...\"}}}}'></textarea> <small id=\"overrideError\" style=\"color: var(--pico-del-color); display: none;\"></small></label><script>\n\t\t\t\t\t\t\t\t\tfunction validateCreateForm() {\n\t\t\t\t\t\t\t\t\t\tvar form = document.getElementById('create-instance-form');\n\t\t\t\t\t\t\t\t\t\t// Check required fields (placeholder inputs)\n\t\t\t\t\t\t\t\t\t\tvar inputs = form.querySelectorAll('input[required]');\n\t\t\t\t\t\t\t\t\t\tfor (var i = 0; i < inputs.length; i++) {\n\t\t\t\t\t\t\t\t\t\t\tif (!inputs[i].value.trim()) {\n\t\t\t\t\t\t\t\t\t\t\t\tinputs[i].setAttribute('aria-invalid', 'true');\n\t\t\t\t\t\t\t\t\t\t\t\tinputs[i].focus();\n\t\t\t\t\t\t\t\t\t\t\t\treturn false;\n\t\t\t\t\t\t\t\t\t\t\t}\n\t\t\t\t\t\t\t\t\t\t\tinputs[i].removeAttribute('aria-invalid');\n\t\t\t\t\t\t\t\t\t\t}\n\t\t\t\t\t\t\t\t\t\t// Check JSON override\n\t\t\t\t\t\t\t\t\t\tvar el = document.getElementById('gatewayConfigOverride');\n\t\t\t\t\t\t\t\t\t\tvar errEl = document.getElementById('overrideError');\n\t\t\t\t\t\t\t\t\t\tvar val = el.value.trim();\n\t\t\t\t\t\t\t\t\t\tif (val === '') {\n\t\t\t\t\t\t\t\t\t\t\terrEl.style.display = 'none';\n\t\t\t\t\t\t\t\t\t\t\treturn true;\n\t\t\t\t\t\t\t\t\t\t}\n\t\t\t\t\t\t\t\t\t\ttry {\n\t\t\t\t\t\t\t\t\t\t\tJSON.parse(val);\n\t\t\t\t\t\t\t\t\t\t\terrEl.style.display = 'none';\n\t\t\t\t\t\t\t\t\t\t\treturn true;\n\t\t\t\t\t\t\t\t\t\t} catch (e) {\n\t\t\t\t\t\t\t\t\t\t\terrEl.textContent = 'Invalid JSON: ' + e.message;\n\t\t\t\t\t\t\t\t\t\t\terrEl.style.display = 'block';\n\t\t\t\t\t\t\t\t\t\t\tel.focus();\n\t\t\t\t\t\t\t\t\t\t\treturn false;\n\t\t\t\t\t\t\t\t\t\t}\n\t\t\t\t\t\t\t\t\t}\n\t\t\t\t\t\t\t\t\t// Also validate on htmx before-request\n\t\t\t\t\t\t\t\t\tdocument.addEventListener('htmx:configRequest', function(evt) {\n\t\t\t\t\t\t\t\t\t\tif (evt.detail.elt.closest('#create-instance-form')) {\n\t\t\t\t\t\t\t\t\t\t\tif (!validateCreateForm()) {\n\t\t\t\t\t\t\t\t\t\t\t\tevt.preventDefault();\n\t\t\t\t\t\t\t\t\t\t\t}\n\t\t\t\t\t\t\t\t\t\t}\n\t\t\t\t\t\t\t\t\t});\n\t\t\t\t\t\t\t\t</script><footer><button type=\"button\" class=\"secondary\" onclick=\"document.getElementById('create-dialog').close()\">Cancel</button> <button type=\"submit\" hx-post=\"/ui/instances\" hx-target=\"#instance-list\" hx-swap=\"innerHTML\" hx-include=\"#create-instance-form\">Create</button></footer></form></article></dialog>")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "</span></div><div id=\"instance-list\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 10, "</span></div><div id=\"instance-list\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -64,12 +123,12 @@ func Dashboard(instances []v1alpha1.ClawInstance, isAdmin bool, hasInstance bool
 				}
 			}
 			if len(instances) == 0 {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 4, "<p id=\"empty-message\">No instances yet. Create your first one!</p>")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 11, "<p id=\"empty-message\">No instances yet. Create your first one!</p>")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, "</div>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 12, "</div>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
