@@ -43,7 +43,7 @@ func AdminDefaults(defaults database.InstanceDefault, isAdmin bool) templ.Compon
 				}()
 			}
 			ctx = templ.InitializeContext(ctx)
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<h1>Instance Defaults</h1><form method=\"POST\" action=\"/ui/admin/defaults\"><label>Image <input type=\"text\" name=\"image\" value=\"")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<h1>Instance Defaults</h1><form method=\"POST\" action=\"/ui/admin/defaults\" onsubmit=\"return validateGatewayConfig()\"><label>Image <input type=\"text\" name=\"image\" value=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -121,7 +121,20 @@ func AdminDefaults(defaults database.InstanceDefault, isAdmin bool) templ.Compon
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 7, "\"></label> <button type=\"submit\">Save</button></form>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 7, "\"></label> <label>Gateway Config (openclaw.json) <textarea name=\"gatewayConfig\" rows=\"14\" style=\"font-family: monospace; font-size: 0.85rem;\" id=\"gatewayConfig\">")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			var templ_7745c5c3_Var9 string
+			templ_7745c5c3_Var9, templ_7745c5c3_Err = templ.JoinStringErrs(defaults.GatewayConfig)
+			if templ_7745c5c3_Err != nil {
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/admin_defaults.templ`, Line: 39, Col: 140}
+			}
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var9))
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 8, "</textarea> <small id=\"gatewayConfigError\" style=\"color: var(--pico-del-color); display: none;\"></small></label><div class=\"grid\"><button type=\"button\" class=\"secondary outline\" onclick=\"formatGatewayConfig()\">Format JSON</button> <button type=\"button\" class=\"secondary outline\" onclick=\"resetGatewayConfig()\">Reset to Default</button></div><script>\n\t\t\t\tfunction validateGatewayConfig() {\n\t\t\t\t\tvar el = document.getElementById('gatewayConfig');\n\t\t\t\t\tvar errEl = document.getElementById('gatewayConfigError');\n\t\t\t\t\ttry {\n\t\t\t\t\t\tJSON.parse(el.value);\n\t\t\t\t\t\terrEl.style.display = 'none';\n\t\t\t\t\t\treturn true;\n\t\t\t\t\t} catch (e) {\n\t\t\t\t\t\terrEl.textContent = 'Invalid JSON: ' + e.message;\n\t\t\t\t\t\terrEl.style.display = 'block';\n\t\t\t\t\t\tel.focus();\n\t\t\t\t\t\treturn false;\n\t\t\t\t\t}\n\t\t\t\t}\n\n\t\t\t\tfunction formatGatewayConfig() {\n\t\t\t\t\tvar el = document.getElementById('gatewayConfig');\n\t\t\t\t\tvar errEl = document.getElementById('gatewayConfigError');\n\t\t\t\t\ttry {\n\t\t\t\t\t\tvar obj = JSON.parse(el.value);\n\t\t\t\t\t\tel.value = JSON.stringify(obj, null, 2);\n\t\t\t\t\t\terrEl.style.display = 'none';\n\t\t\t\t\t} catch (e) {\n\t\t\t\t\t\terrEl.textContent = 'Invalid JSON: ' + e.message;\n\t\t\t\t\t\terrEl.style.display = 'block';\n\t\t\t\t\t}\n\t\t\t\t}\n\n\t\t\t\tfunction resetGatewayConfig() {\n\t\t\t\t\tfetch('/api/admin/defaults/gateway-config/default')\n\t\t\t\t\t\t.then(r => r.json())\n\t\t\t\t\t\t.then(data => {\n\t\t\t\t\t\t\tvar el = document.getElementById('gatewayConfig');\n\t\t\t\t\t\t\tvar errEl = document.getElementById('gatewayConfigError');\n\t\t\t\t\t\t\ttry {\n\t\t\t\t\t\t\t\tel.value = JSON.stringify(JSON.parse(data.gatewayConfig), null, 2);\n\t\t\t\t\t\t\t} catch (_) {\n\t\t\t\t\t\t\t\tel.value = data.gatewayConfig;\n\t\t\t\t\t\t\t}\n\t\t\t\t\t\t\terrEl.style.display = 'none';\n\t\t\t\t\t\t});\n\t\t\t\t}\n\t\t\t</script><button type=\"submit\">Save</button></form>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}

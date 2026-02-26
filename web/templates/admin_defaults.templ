@@ -5,7 +5,7 @@ import "github.com/clawbake/clawbake/internal/database"
 templ AdminDefaults(defaults database.InstanceDefault, isAdmin bool) {
 	@Layout("Defaults", isAdmin) {
 		<h1>Instance Defaults</h1>
-		<form method="POST" action="/ui/admin/defaults">
+		<form method="POST" action="/ui/admin/defaults" onsubmit="return validateGatewayConfig()">
 			<label>
 				Image
 				<input type="text" name="image" value={ defaults.Image }/>
@@ -34,6 +34,59 @@ templ AdminDefaults(defaults database.InstanceDefault, isAdmin bool) {
 				Storage Size
 				<input type="text" name="storageSize" value={ defaults.StorageSize }/>
 			</label>
+			<label>
+				Gateway Config (openclaw.json)
+				<textarea name="gatewayConfig" rows="14" style="font-family: monospace; font-size: 0.85rem;" id="gatewayConfig">{ defaults.GatewayConfig }</textarea>
+				<small id="gatewayConfigError" style="color: var(--pico-del-color); display: none;"></small>
+			</label>
+			<div class="grid">
+				<button type="button" class="secondary outline" onclick="formatGatewayConfig()">Format JSON</button>
+				<button type="button" class="secondary outline" onclick="resetGatewayConfig()">Reset to Default</button>
+			</div>
+			<script>
+				function validateGatewayConfig() {
+					var el = document.getElementById('gatewayConfig');
+					var errEl = document.getElementById('gatewayConfigError');
+					try {
+						JSON.parse(el.value);
+						errEl.style.display = 'none';
+						return true;
+					} catch (e) {
+						errEl.textContent = 'Invalid JSON: ' + e.message;
+						errEl.style.display = 'block';
+						el.focus();
+						return false;
+					}
+				}
+
+				function formatGatewayConfig() {
+					var el = document.getElementById('gatewayConfig');
+					var errEl = document.getElementById('gatewayConfigError');
+					try {
+						var obj = JSON.parse(el.value);
+						el.value = JSON.stringify(obj, null, 2);
+						errEl.style.display = 'none';
+					} catch (e) {
+						errEl.textContent = 'Invalid JSON: ' + e.message;
+						errEl.style.display = 'block';
+					}
+				}
+
+				function resetGatewayConfig() {
+					fetch('/api/admin/defaults/gateway-config/default')
+						.then(r => r.json())
+						.then(data => {
+							var el = document.getElementById('gatewayConfig');
+							var errEl = document.getElementById('gatewayConfigError');
+							try {
+								el.value = JSON.stringify(JSON.parse(data.gatewayConfig), null, 2);
+							} catch (_) {
+								el.value = data.gatewayConfig;
+							}
+							errEl.style.display = 'none';
+						});
+				}
+			</script>
 			<button type="submit">Save</button>
 		</form>
 	}

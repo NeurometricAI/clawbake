@@ -38,6 +38,7 @@ func (h *Handler) RegisterRoutes(e *echo.Echo) {
 		admin.GET("/users", h.ListUsers)
 		admin.GET("/defaults", h.GetDefaults)
 		admin.PUT("/defaults", h.UpdateDefaults)
+		admin.GET("/defaults/gateway-config/default", h.GetDefaultGatewayConfig)
 
 		// Reverse proxy to user's instance
 		e.Any("/proxy/*", h.ProxyToInstance, h.Auth.RequireAuth)
@@ -85,6 +86,7 @@ func (h *Handler) RegisterRoutes(e *echo.Echo) {
 		admin.GET("/users", h.ListUsers)
 		admin.GET("/defaults", h.GetDefaults)
 		admin.PUT("/defaults", h.UpdateDefaults)
+		admin.GET("/defaults/gateway-config/default", h.GetDefaultGatewayConfig)
 
 		// Reverse proxy to user's instance
 		e.Any("/proxy/*", h.ProxyToInstance, h.DevAuth.RequireAuth)

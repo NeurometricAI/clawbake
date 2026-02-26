@@ -9,5 +9,6 @@ UPDATE instance_defaults SET
     cpu_limit = $4,
     memory_limit = $5,
     storage_size = $6,
+    gateway_config = $7,
     updated_at = now()
 RETURNING *;

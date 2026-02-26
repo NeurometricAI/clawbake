@@ -1,11 +1,13 @@
 package handler
 
 import (
+	"encoding/json"
 	"net/http"
 
 	"github.com/labstack/echo/v4"
 
 	"github.com/clawbake/clawbake/internal/database"
+	"github.com/clawbake/clawbake/internal/operator"
 )
 
 func (h *Handler) ListUsers(c echo.Context) error {
@@ -31,12 +33,17 @@ type updateDefaultsRequest struct {
 	CpuLimit      string `json:"cpuLimit"`
 	MemoryLimit   string `json:"memoryLimit"`
 	StorageSize   string `json:"storageSize"`
+	GatewayConfig string `json:"gatewayConfig"`
 }
 
 func (h *Handler) UpdateDefaults(c echo.Context) error {
 	var req updateDefaultsRequest
 	if err := c.Bind(&req); err != nil {
 		return echo.NewHTTPError(http.StatusBadRequest, "invalid request body")
+	}
+
+	if !json.Valid([]byte(req.GatewayConfig)) {
+		return echo.NewHTTPError(http.StatusBadRequest, "gateway config is not valid JSON")
 	}
 
 	defaults, err := h.DB.UpdateDefaults(c.Request().Context(), database.UpdateDefaultsParams{
@@ -46,10 +53,17 @@ func (h *Handler) UpdateDefaults(c echo.Context) error {
 		CpuLimit:      req.CpuLimit,
 		MemoryLimit:   req.MemoryLimit,
 		StorageSize:   req.StorageSize,
+		GatewayConfig: req.GatewayConfig,
 	})
 	if err != nil {
 		return echo.NewHTTPError(http.StatusInternalServerError, "failed to update defaults")
 	}
 
 	return c.JSON(http.StatusOK, defaults)
+}
+
+func (h *Handler) GetDefaultGatewayConfig(c echo.Context) error {
+	return c.JSON(http.StatusOK, map[string]string{
+		"gatewayConfig": operator.DefaultGatewayConfig,
+	})
 }

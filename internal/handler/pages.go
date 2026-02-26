@@ -1,6 +1,8 @@
 package handler
 
 import (
+	"bytes"
+	"encoding/json"
 	"net/http"
 
 	"github.com/a-h/templ"
@@ -92,9 +94,10 @@ func (h *Handler) PageCreateInstance(c echo.Context) error {
 			Namespace: h.Config.KubeNamespace,
 		},
 		Spec: v1alpha1.ClawInstanceSpec{
-			UserId:       uid,
-			Image:        defaults.Image,
-			GatewayToken: generateToken(),
+			UserId:        uid,
+			Image:         defaults.Image,
+			GatewayToken:  generateToken(),
+			GatewayConfig: defaults.GatewayConfig,
 			Resources: v1alpha1.ClawInstanceResources{
 				Requests: v1alpha1.ResourceList{
 					CPU:    defaults.CpuRequest,
@@ -191,6 +194,7 @@ func (h *Handler) PageAdminDefaults(c echo.Context) error {
 	if err != nil {
 		return echo.NewHTTPError(http.StatusInternalServerError, "failed to get defaults")
 	}
+	defaults.GatewayConfig = prettyJSON(defaults.GatewayConfig)
 	return render(c, http.StatusOK, templates.AdminDefaults(defaults, true))
 }
 
@@ -200,6 +204,13 @@ func (h *Handler) PageUpdateDefaults(c echo.Context) error {
 		return c.Redirect(http.StatusFound, "/")
 	}
 
+	gatewayConfig := c.FormValue("gatewayConfig")
+	if !json.Valid([]byte(gatewayConfig)) {
+		return echo.NewHTTPError(http.StatusBadRequest, "gateway config is not valid JSON")
+	}
+	// Compact the JSON for storage
+	gatewayConfig = compactJSON(gatewayConfig)
+
 	_, err := h.DB.UpdateDefaults(c.Request().Context(), database.UpdateDefaultsParams{
 		Image:         c.FormValue("image"),
 		CpuRequest:    c.FormValue("cpuRequest"),
@@ -207,10 +218,27 @@ func (h *Handler) PageUpdateDefaults(c echo.Context) error {
 		CpuLimit:      c.FormValue("cpuLimit"),
 		MemoryLimit:   c.FormValue("memoryLimit"),
 		StorageSize:   c.FormValue("storageSize"),
+		GatewayConfig: gatewayConfig,
 	})
 	if err != nil {
 		return echo.NewHTTPError(http.StatusInternalServerError, "failed to update defaults")
 	}
 
 	return c.Redirect(http.StatusSeeOther, "/ui/admin/defaults")
+}
+
+func prettyJSON(s string) string {
+	var buf bytes.Buffer
+	if err := json.Indent(&buf, []byte(s), "", "  "); err != nil {
+		return s
+	}
+	return buf.String()
+}
+
+func compactJSON(s string) string {
+	var buf bytes.Buffer
+	if err := json.Compact(&buf, []byte(s)); err != nil {
+		return s
+	}
+	return buf.String()
 }

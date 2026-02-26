@@ -24,6 +24,7 @@ import (
 	"github.com/clawbake/clawbake/internal/database"
 	"github.com/clawbake/clawbake/internal/handler"
 	"github.com/clawbake/clawbake/internal/k8s"
+	"github.com/clawbake/clawbake/internal/operator"
 )
 
 func runMigrations(databaseURL string) error {
@@ -82,6 +83,11 @@ func syncInstanceDefaults(ctx context.Context, db *database.Queries, cfg *config
 		current.StorageSize = cfg.InstanceDefaultStorageSize
 	}
 
+	// Ensure gateway_config always has a value (use hardcoded default if DB column is empty)
+	if current.GatewayConfig == "" {
+		current.GatewayConfig = operator.DefaultGatewayConfig
+	}
+
 	_, err = db.UpdateDefaults(ctx, database.UpdateDefaultsParams{
 		Image:         current.Image,
 		CpuRequest:    current.CpuRequest,
@@ -89,6 +95,7 @@ func syncInstanceDefaults(ctx context.Context, db *database.Queries, cfg *config
 		CpuLimit:      current.CpuLimit,
 		MemoryLimit:   current.MemoryLimit,
 		StorageSize:   current.StorageSize,
+		GatewayConfig: current.GatewayConfig,
 	})
 	return err
 }

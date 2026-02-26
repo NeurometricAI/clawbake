@@ -17,6 +17,7 @@ type InstanceDefault struct {
 	MemoryLimit   string             `json:"memory_limit"`
 	StorageSize   string             `json:"storage_size"`
 	UpdatedAt     pgtype.Timestamptz `json:"updated_at"`
+	GatewayConfig string             `json:"gateway_config"`
 }
 
 type User struct {

@@ -26,6 +26,9 @@ import (
 
 const finalizerName = "clawbake.io/finalizer"
 
+// DefaultGatewayConfig is the default openclaw.json configuration written by the init container.
+const DefaultGatewayConfig = `{"gateway":{"controlUi":{"allowInsecureAuth":true,"dangerouslyDisableDeviceAuth":true,"dangerouslyAllowHostHeaderOriginFallback":true},"http":{"endpoints":{"chatCompletions":{"enabled":true}}}}}`
+
 // +kubebuilder:rbac:groups=clawbake.io,resources=clawinstances,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=clawbake.io,resources=clawinstances/status,verbs=get;update;patch
 // +kubebuilder:rbac:groups=clawbake.io,resources=clawinstances/finalizers,verbs=update
@@ -261,6 +264,11 @@ func (r *ClawInstanceReconciler) reconcileDeployment(ctx context.Context, instan
 			},
 		}
 
+		gatewayConfig := instance.Spec.GatewayConfig
+		if gatewayConfig == "" {
+			gatewayConfig = DefaultGatewayConfig
+		}
+
 		var initContainers []corev1.Container
 		if r.AllowInsecureControlUI {
 			initContainers = []corev1.Container{
@@ -268,7 +276,7 @@ func (r *ClawInstanceReconciler) reconcileDeployment(ctx context.Context, instan
 					Name:  "write-config",
 					Image: instance.Spec.Image,
 					Command: []string{"sh", "-c",
-						`test -f /home/node/.openclaw/openclaw.json || echo '{"gateway":{"controlUi":{"allowInsecureAuth":true,"dangerouslyDisableDeviceAuth":true,"dangerouslyAllowHostHeaderOriginFallback":true},"http":{"endpoints":{"chatCompletions":{"enabled":true}}}}}' > /home/node/.openclaw/openclaw.json`,
+						fmt.Sprintf(`test -f /home/node/.openclaw/openclaw.json || echo '%s' > /home/node/.openclaw/openclaw.json`, gatewayConfig),
 					},
 					VolumeMounts: []corev1.VolumeMount{
 						{Name: "data", MountPath: "/home/node/.openclaw", SubPath: "openclaw-config"},

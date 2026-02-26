@@ -10,7 +10,7 @@ import (
 )
 
 const getDefaults = `-- name: GetDefaults :one
-SELECT id, image, cpu_request, memory_request, cpu_limit, memory_limit, storage_size, updated_at FROM instance_defaults LIMIT 1
+SELECT id, image, cpu_request, memory_request, cpu_limit, memory_limit, storage_size, updated_at, gateway_config FROM instance_defaults LIMIT 1
 `
 
 func (q *Queries) GetDefaults(ctx context.Context) (InstanceDefault, error) {
@@ -25,6 +25,7 @@ func (q *Queries) GetDefaults(ctx context.Context) (InstanceDefault, error) {
 		&i.MemoryLimit,
 		&i.StorageSize,
 		&i.UpdatedAt,
+		&i.GatewayConfig,
 	)
 	return i, err
 }
@@ -37,8 +38,9 @@ UPDATE instance_defaults SET
     cpu_limit = $4,
     memory_limit = $5,
     storage_size = $6,
+    gateway_config = $7,
     updated_at = now()
-RETURNING id, image, cpu_request, memory_request, cpu_limit, memory_limit, storage_size, updated_at
+RETURNING id, image, cpu_request, memory_request, cpu_limit, memory_limit, storage_size, updated_at, gateway_config
 `
 
 type UpdateDefaultsParams struct {
@@ -48,6 +50,7 @@ type UpdateDefaultsParams struct {
 	CpuLimit      string `json:"cpu_limit"`
 	MemoryLimit   string `json:"memory_limit"`
 	StorageSize   string `json:"storage_size"`
+	GatewayConfig string `json:"gateway_config"`
 }
 
 func (q *Queries) UpdateDefaults(ctx context.Context, arg UpdateDefaultsParams) (InstanceDefault, error) {
@@ -58,6 +61,7 @@ func (q *Queries) UpdateDefaults(ctx context.Context, arg UpdateDefaultsParams) 
 		arg.CpuLimit,
 		arg.MemoryLimit,
 		arg.StorageSize,
+		arg.GatewayConfig,
 	)
 	var i InstanceDefault
 	err := row.Scan(
@@ -69,6 +73,7 @@ func (q *Queries) UpdateDefaults(ctx context.Context, arg UpdateDefaultsParams) 
 		&i.MemoryLimit,
 		&i.StorageSize,
 		&i.UpdatedAt,
+		&i.GatewayConfig,
 	)
 	return i, err
 }
