@@ -246,7 +246,10 @@ func (r *ClawInstanceReconciler) reconcileDeployment(ctx context.Context, instan
 		}
 		replicas := int32(1)
 
-		volumeMounts := []corev1.VolumeMount{{Name: "data", MountPath: "/data"}}
+		volumeMounts := []corev1.VolumeMount{
+			{Name: "data", MountPath: "/data"},
+			{Name: "data", MountPath: "/home/node/.openclaw", SubPath: "openclaw-config"},
+		}
 		volumes := []corev1.Volume{
 			{
 				Name: "data",
@@ -260,18 +263,15 @@ func (r *ClawInstanceReconciler) reconcileDeployment(ctx context.Context, instan
 
 		var initContainers []corev1.Container
 		if r.AllowInsecureControlUI {
-			volumeMounts = append(volumeMounts, corev1.VolumeMount{Name: "openclaw-config", MountPath: "/home/node/.openclaw"})
-			volumes = append(volumes, corev1.Volume{
-				Name:         "openclaw-config",
-				VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}},
-			})
 			initContainers = []corev1.Container{
 				{
-					Name:    "write-config",
-					Image:   instance.Spec.Image,
-					Command: []string{"sh", "-c", `echo '{"gateway":{"controlUi":{"allowInsecureAuth":true,"dangerouslyDisableDeviceAuth":true,"dangerouslyAllowHostHeaderOriginFallback":true},"http":{"endpoints":{"chatCompletions":{"enabled":true}}}}}' > /home/node/.openclaw/openclaw.json`},
+					Name:  "write-config",
+					Image: instance.Spec.Image,
+					Command: []string{"sh", "-c",
+						`test -f /home/node/.openclaw/openclaw.json || echo '{"gateway":{"controlUi":{"allowInsecureAuth":true,"dangerouslyDisableDeviceAuth":true,"dangerouslyAllowHostHeaderOriginFallback":true},"http":{"endpoints":{"chatCompletions":{"enabled":true}}}}}' > /home/node/.openclaw/openclaw.json`,
+					},
 					VolumeMounts: []corev1.VolumeMount{
-						{Name: "openclaw-config", MountPath: "/home/node/.openclaw"},
+						{Name: "data", MountPath: "/home/node/.openclaw", SubPath: "openclaw-config"},
 					},
 				},
 			}
