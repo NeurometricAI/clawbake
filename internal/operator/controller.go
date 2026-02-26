@@ -16,6 +16,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/client-go/tools/record"
+	"k8s.io/utils/ptr"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
@@ -290,6 +291,9 @@ func (r *ClawInstanceReconciler) reconcileDeployment(ctx context.Context, instan
 					Labels: labels,
 				},
 				Spec: corev1.PodSpec{
+					SecurityContext: &corev1.PodSecurityContext{
+						FSGroup: ptr.To(int64(1000)),
+					},
 					InitContainers: initContainers,
 					Containers: []corev1.Container{
 						{
