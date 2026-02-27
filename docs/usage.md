@@ -2,6 +2,8 @@
 
 This guide covers how to use Clawbake after it's been deployed. For deployment instructions, see [deployment.md](deployment.md).
 
+![Demo walkthrough](screenshots/demo.gif)
+
 ## Roles
 
 Clawbake has two roles:
@@ -15,6 +17,8 @@ The first user to log in is automatically assigned the admin role. Subsequent us
 
 If OIDC is configured, users log in with their Google account. If OIDC is not configured (local development), a simple login screen lets you choose a role.
 
+![Login screen](screenshots/login.png)
+
 ## Dashboard
 
 After logging in, the dashboard shows your instances (or all instances for admins). Each instance card displays:
@@ -26,15 +30,21 @@ After logging in, the dashboard shows your instances (or all instances for admin
 
 Status badges auto-refresh every 5 seconds while the instance is starting up.
 
+![Dashboard with a running instance](screenshots/dashboard-running.png)
+
 ## Creating an Instance
 
 Each user can have one instance at a time. Click **Create Instance** on the dashboard to open the creation dialog.
+
+![Create instance dialog](screenshots/create-instance.png)
 
 ### Placeholders
 
 If the admin has configured gateway config placeholders (see [Admin: Instance Defaults](#instance-defaults)), the creation dialog will show required input fields for each placeholder. All placeholder fields must be filled before creating.
 
-For example, if the admin gateway config template contains `{{API_KEY}}`, you'll see a required "API_KEY" input field.
+For example, if the admin gateway config template contains `{{OPENAI_API_KEY}}`, you'll see a required input field:
+
+![Create dialog with placeholder fields](screenshots/create-instance-placeholders.png)
 
 ### Gateway Config Override
 
@@ -77,6 +87,8 @@ Click **Details** on any instance card to see the full instance detail page, whi
 - Access buttons (Web UI, Terminal) when running
 - Delete button with confirmation
 
+![Instance detail page](screenshots/instance-detail.png)
+
 ## Deleting an Instance
 
 Click **Delete** on the instance card or detail page. A confirmation dialog will appear. Deletion removes the Kubernetes namespace and all associated resources (deployment, PVC, service, ingress).
@@ -116,6 +128,8 @@ The **Users** page (`/ui/admin/users`) lists all registered users with their nam
 ### Instance Defaults
 
 The **Defaults** page (`/ui/admin/defaults`) configures the default settings applied to every new instance:
+
+![Admin defaults page](screenshots/admin-defaults.png)
 
 | Setting | Description | Example |
 |---------|-------------|---------|
