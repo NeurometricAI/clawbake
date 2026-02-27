@@ -149,7 +149,7 @@ func main() {
 
 	var slackBot *bot.Bot
 	if cfg.SlackBotToken != "" && cfg.SlackSigningSecret != "" {
-		slackBot = bot.New(cfg.SlackBotToken, cfg.SlackSigningSecret, db, k8sClient, cfg.KubeNamespace, cfg.BaseURL)
+		slackBot = bot.New(cfg.SlackBotToken, cfg.SlackSigningSecret, db, k8sClient, cfg.KubeNamespace, cfg.BaseURL, cfg.TtydEnabled)
 		log.Println("Slack bot enabled")
 	}
 

@@ -22,6 +22,8 @@ type Config struct {
 	InstanceDefaultMemoryLimit   string
 	InstanceDefaultStorageSize   string
 	InstanceDefaultGatewayConfig string
+
+	TtydEnabled bool
 }
 
 func Load() *Config {
@@ -45,6 +47,8 @@ func Load() *Config {
 		InstanceDefaultMemoryLimit:   os.Getenv("INSTANCE_DEFAULT_MEMORY_LIMIT"),
 		InstanceDefaultStorageSize:   os.Getenv("INSTANCE_DEFAULT_STORAGE_SIZE"),
 		InstanceDefaultGatewayConfig: os.Getenv("INSTANCE_DEFAULT_GATEWAY_CONFIG"),
+
+		TtydEnabled: os.Getenv("TTYD_ENABLED") != "false",
 	}
 }
 

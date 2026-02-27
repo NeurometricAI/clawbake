@@ -210,7 +210,7 @@ func TestHandleCommands_Help(t *testing.T) {
 	if resp["response_type"] != "ephemeral" {
 		t.Fatalf("expected ephemeral response, got %s", resp["response_type"])
 	}
-	if !strings.Contains(resp["text"], "Clawbake Bot Commands") {
+	if !strings.Contains(resp["text"], "Clawbake Commands") {
 		t.Fatalf("expected help text, got: %s", resp["text"])
 	}
 }

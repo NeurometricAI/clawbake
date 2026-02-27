@@ -18,20 +18,40 @@ import (
 	"github.com/clawbake/clawbake/internal/k8s"
 )
 
-func isWebSocketUpgrade(r *http.Request) bool {
-	return strings.EqualFold(r.Header.Get("Upgrade"), "websocket")
+const (
+	proxyPrefixWeb = "/proxy/web"
+	proxyPrefixTUI = "/proxy/tui"
+	portWeb        = 18789
+	portTUI        = 7681
+)
+
+type proxyRoute struct {
+	port   int
+	prefix string
 }
 
-func stripProxyPrefix(path string) string {
-	if len(path) > len("/proxy") {
-		return path[len("/proxy"):]
+// classifyProxyPath determines backend port and route prefix from the request path.
+func classifyProxyPath(path string) proxyRoute {
+	if strings.HasPrefix(path, proxyPrefixTUI) {
+		return proxyRoute{port: portTUI, prefix: proxyPrefixTUI}
+	}
+	return proxyRoute{port: portWeb, prefix: proxyPrefixWeb}
+}
+
+// stripRoutePrefix removes the given prefix from the path, returning "/" if nothing remains.
+func stripRoutePrefix(path, prefix string) string {
+	if len(path) > len(prefix) {
+		return path[len(prefix):]
 	}
 	return "/"
 }
 
+func isWebSocketUpgrade(r *http.Request) bool {
+	return strings.EqualFold(r.Header.Get("Upgrade"), "websocket")
+}
+
 // WebSocketMiddleware intercepts WebSocket upgrade requests at any path and proxies
-// them to the authenticated user's openclaw instance. The openclaw control UI connects
-// to ws://{host}/ (root) by default, so we can't rely on the /proxy/* route alone.
+// them to the authenticated user's openclaw instance.
 func (h *Handler) WebSocketMiddleware(requireAuth echo.MiddlewareFunc) echo.MiddlewareFunc {
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
@@ -59,16 +79,29 @@ func (h *Handler) WebSocketMiddleware(requireAuth echo.MiddlewareFunc) echo.Midd
 				if ns == "" {
 					ns = fmt.Sprintf("clawbake-%s", uid)
 				}
-				target, _ := url.Parse(fmt.Sprintf("http://openclaw.%s.svc.cluster.local:18789", ns))
-				token := instance.Spec.GatewayToken
 
-				return h.proxyWebSocket(c, target, token)
+				route := classifyProxyPath(c.Request().URL.Path)
+				target, _ := url.Parse(fmt.Sprintf("http://openclaw.%s.svc.cluster.local:%d", ns, route.port))
+
+				token := ""
+				if route.port == portWeb {
+					token = instance.Spec.GatewayToken
+				}
+
+				return h.proxyWebSocket(c, target, token, route.prefix)
 			})(c)
 		}
 	}
 }
 
 func (h *Handler) ProxyToInstance(c echo.Context) error {
+	reqPath := c.Request().URL.Path
+
+	// Redirect bare /proxy/ to /proxy/web/
+	if reqPath == "/proxy" || reqPath == "/proxy/" {
+		return c.Redirect(http.StatusFound, "/proxy/web/")
+	}
+
 	user := auth.UserFromContext(c.Request().Context())
 	userID, _ := user.ID.Value()
 	uid, _ := userID.(string)
@@ -87,18 +120,23 @@ func (h *Handler) ProxyToInstance(c echo.Context) error {
 		ns = fmt.Sprintf("clawbake-%s", uid)
 	}
 
-	target, _ := url.Parse(fmt.Sprintf("http://openclaw.%s.svc.cluster.local:18789", ns))
-	token := instance.Spec.GatewayToken
+	route := classifyProxyPath(reqPath)
+	target, _ := url.Parse(fmt.Sprintf("http://openclaw.%s.svc.cluster.local:%d", ns, route.port))
+
+	// Only inject token for web UI
+	token := ""
+	if route.port == portWeb {
+		token = instance.Spec.GatewayToken
+	}
 
 	if isWebSocketUpgrade(c.Request()) {
-		return h.proxyWebSocket(c, target, token)
+		return h.proxyWebSocket(c, target, token, route.prefix)
 	}
 
 	// Inject token as query param so the control UI uses it for WebSocket auth.
-	// The control UI reads ?token=... on load, saves it, then cleans it from the URL.
-	requestPath := stripProxyPrefix(c.Request().URL.Path)
-	if requestPath == "/" && token != "" && c.QueryParam("token") == "" {
-		return c.Redirect(http.StatusFound, fmt.Sprintf("/proxy/?token=%s", url.QueryEscape(token)))
+	requestPath := stripRoutePrefix(reqPath, route.prefix)
+	if route.port == portWeb && requestPath == "/" && token != "" && c.QueryParam("token") == "" {
+		return c.Redirect(http.StatusFound, fmt.Sprintf("/proxy/web/?token=%s", url.QueryEscape(token)))
 	}
 
 	proxy := &httputil.ReverseProxy{
@@ -106,13 +144,13 @@ func (h *Handler) ProxyToInstance(c echo.Context) error {
 			req.URL.Scheme = target.Scheme
 			req.URL.Host = target.Host
 			req.Host = target.Host
-			req.URL.Path = stripProxyPrefix(req.URL.Path)
+			req.URL.Path = stripRoutePrefix(req.URL.Path, route.prefix)
 			if token != "" {
 				req.Header.Set("X-OpenClaw-Token", token)
 			}
 		},
 		ModifyResponse: func(resp *http.Response) error {
-			// Rewrite basePath in control UI config so WebSocket URLs go through /proxy
+			// Rewrite basePath in control UI config so WebSocket URLs go through /proxy/web
 			if requestPath != "/__openclaw/control-ui-config.json" {
 				return nil
 			}
@@ -126,7 +164,7 @@ func (h *Handler) ProxyToInstance(c echo.Context) error {
 				resp.Body = io.NopCloser(bytes.NewReader(body))
 				return nil
 			}
-			cfg["basePath"] = "/proxy"
+			cfg["basePath"] = "/proxy/web"
 			modified, err := json.Marshal(cfg)
 			if err != nil {
 				resp.Body = io.NopCloser(bytes.NewReader(body))
@@ -143,7 +181,7 @@ func (h *Handler) ProxyToInstance(c echo.Context) error {
 	return nil
 }
 
-func (h *Handler) proxyWebSocket(c echo.Context, target *url.URL, token string) error {
+func (h *Handler) proxyWebSocket(c echo.Context, target *url.URL, token string, prefix string) error {
 	req := c.Request()
 
 	// Connect to backend
@@ -154,10 +192,10 @@ func (h *Handler) proxyWebSocket(c echo.Context, target *url.URL, token string) 
 	defer backendConn.Close()
 
 	// Build the upgrade request for the backend.
-	// Strip /proxy prefix if present, otherwise forward the path as-is.
+	// Strip the route prefix if present, otherwise forward the path as-is.
 	path := req.URL.Path
-	if strings.HasPrefix(path, "/proxy") {
-		path = stripProxyPrefix(path)
+	if strings.HasPrefix(path, prefix) {
+		path = stripRoutePrefix(path, prefix)
 	}
 	if req.URL.RawQuery != "" {
 		path += "?" + req.URL.RawQuery

@@ -45,7 +45,7 @@ func (b *Bot) HandleCommands(c echo.Context) error {
 	case "open":
 		return b.handleOpen(ctx, c, cmd)
 	default:
-		return b.handleHelp(ctx, c)
+		return b.handleHelp(ctx, c, cmd.Command)
 	}
 }
 
@@ -133,7 +133,7 @@ func (b *Bot) handleCreate(ctx context.Context, c echo.Context, cmd slack.SlashC
 			}
 		}
 		if len(missing) > 0 {
-			usage := "Usage: `/clawbake create"
+			usage := fmt.Sprintf("Usage: `%s create", cmd.Command)
 			for _, p := range placeholders {
 				usage += fmt.Sprintf(" %s=value", p)
 			}
@@ -153,7 +153,7 @@ func (b *Bot) handleCreate(ctx context.Context, c echo.Context, cmd slack.SlashC
 	// Apply optional JSON override on top
 	if jsonOverride != "" {
 		if !json.Valid([]byte(jsonOverride)) {
-			return respondSlack(c, "Invalid JSON override. Usage: `/clawbake create json={\"key\":\"value\"}`")
+			return respondSlack(c, fmt.Sprintf("Invalid JSON override. Usage: `%s create json={\"key\":\"value\"}`", cmd.Command))
 		}
 		merged, err := jsonutil.MergeJSON(gatewayConfig, jsonOverride)
 		if err != nil {
@@ -196,7 +196,7 @@ func (b *Bot) handleCreate(ctx context.Context, c echo.Context, cmd slack.SlashC
 		return respondSlack(c, fmt.Sprintf("Failed to create instance: %s", err))
 	}
 
-	return respondSlack(c, "Creating your openclaw instance! Access it via the web app once ready.\nUse `/clawbake status` to check progress.")
+	return respondSlack(c, fmt.Sprintf("Creating your openclaw instance! Access it via the web app once ready.\nUse `%s status` to check progress.", cmd.Command))
 }
 
 func (b *Bot) handleStatus(ctx context.Context, c echo.Context, cmd slack.SlashCommand) error {
@@ -207,7 +207,7 @@ func (b *Bot) handleStatus(ctx context.Context, c echo.Context, cmd slack.SlashC
 
 	instance, err := b.getUserInstance(ctx, user.ID.Bytes)
 	if err != nil {
-		return respondSlack(c, "You don't have an openclaw instance. Use `/clawbake create` to create one.")
+		return respondSlack(c, fmt.Sprintf("You don't have an openclaw instance. Use `%s create` to create one.", cmd.Command))
 	}
 
 	msg := fmt.Sprintf("*Instance Status*\n• Phase: %s\n• Namespace: %s",
@@ -241,19 +241,29 @@ func (b *Bot) handleOpen(ctx context.Context, c echo.Context, cmd slack.SlashCom
 
 	instance, err := b.getUserInstance(ctx, user.ID.Bytes)
 	if err != nil {
-		return respondSlack(c, "You don't have an openclaw instance. Use `/clawbake create` to create one.")
+		return respondSlack(c, fmt.Sprintf("You don't have an openclaw instance. Use `%s create` to create one.", cmd.Command))
 	}
 
 	if instance.Status.Phase != "Running" {
 		return respondSlack(c, fmt.Sprintf("Your instance isn't ready yet (status: %s). Try again shortly.", instance.Status.Phase))
 	}
 
-	return respondSlack(c, fmt.Sprintf("Open your dashboard: %s/proxy/", b.baseURL))
+	// Parse optional "web" or "tui" argument (default: web)
+	parts := strings.Fields(cmd.Text)
+	mode := "web"
+	if len(parts) >= 2 && parts[1] == "tui" {
+		if !b.ttydEnabled {
+			return respondSlack(c, "Terminal access is not enabled.")
+		}
+		mode = "tui"
+	}
+
+	return respondSlack(c, fmt.Sprintf("Open your instance: %s/proxy/%s/", b.baseURL, mode))
 }
 
-func (b *Bot) handleHelp(ctx context.Context, c echo.Context) error {
-	createUsage := "• `/clawbake create` - Provision a new openclaw instance\n" +
-		"• `/clawbake create {\"key\":\"value\"}` - Create with gateway config overrides (merged over admin defaults)"
+func (b *Bot) handleHelp(ctx context.Context, c echo.Context, cmdName string) error {
+	createUsage := fmt.Sprintf("• `%s create` - Provision a new openclaw instance\n", cmdName) +
+		fmt.Sprintf("• `%s create {\"key\":\"value\"}` - Create with gateway config overrides (merged over admin defaults)", cmdName)
 
 	// Show dynamic usage if admin config has placeholders
 	defaults, err := func() (*database.InstanceDefault, error) {
@@ -266,22 +276,29 @@ func (b *Bot) handleHelp(ctx context.Context, c echo.Context) error {
 	if err == nil {
 		placeholders := jsonutil.ExtractPlaceholders(defaults.GatewayConfig)
 		if len(placeholders) > 0 {
-			example := "• `/clawbake create"
+			example := fmt.Sprintf("• `%s create", cmdName)
 			for _, p := range placeholders {
 				example += fmt.Sprintf(" %s=value", p)
 			}
 			example += "` - Provision with required config values"
 			createUsage = example + "\n" +
-				"• `/clawbake create " + placeholders[0] + "=value json={\"key\":\"value\"}` - With config values and override"
+				fmt.Sprintf("• `%s create %s=value json={\"key\":\"value\"}` - With config values and override", cmdName, placeholders[0])
 		}
 	}
 
-	return respondSlack(c, "*Clawbake Bot Commands*\n"+
+	name := strings.TrimPrefix(cmdName, "/")
+	return respondSlack(c, fmt.Sprintf("*%s Commands*\n", strings.ToUpper(name[:1])+name[1:])+
 		createUsage+"\n"+
-		"• `/clawbake status` - Show your instance status\n"+
-		"• `/clawbake open` - Get a link to your instance dashboard\n"+
-		"• `/clawbake delete` - Delete your instance\n"+
-		"• `/clawbake help` - Show this help message")
+		fmt.Sprintf("• `%s status` - Show your instance status\n", cmdName)+
+		fmt.Sprintf("• `%s open` - Get a link to your instance web UI\n", cmdName)+
+		func() string {
+			if b.ttydEnabled {
+				return fmt.Sprintf("• `%s open tui` - Get a link to your instance terminal\n", cmdName)
+			}
+			return ""
+		}()+
+		fmt.Sprintf("• `%s delete` - Delete your instance\n", cmdName)+
+		fmt.Sprintf("• `%s help` - Show this help message", cmdName))
 }
 
 func generateToken() string {

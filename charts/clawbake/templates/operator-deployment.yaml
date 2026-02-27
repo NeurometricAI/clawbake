@@ -35,5 +35,45 @@ spec:
                 configMapKeyRef:
                   name: {{ include "clawbake.fullname" . }}
                   key: instance-gateway-config
+            - name: INSTANCE_TTYD_ENABLED
+              valueFrom:
+                configMapKeyRef:
+                  name: {{ include "clawbake.fullname" . }}
+                  key: instance-ttyd-enabled
+            - name: INSTANCE_TTYD_IMAGE
+              valueFrom:
+                configMapKeyRef:
+                  name: {{ include "clawbake.fullname" . }}
+                  key: instance-ttyd-image
+            - name: INSTANCE_TTYD_PORT
+              valueFrom:
+                configMapKeyRef:
+                  name: {{ include "clawbake.fullname" . }}
+                  key: instance-ttyd-port
+            - name: INSTANCE_TTYD_COMMAND
+              valueFrom:
+                configMapKeyRef:
+                  name: {{ include "clawbake.fullname" . }}
+                  key: instance-ttyd-command
+            - name: INSTANCE_TTYD_CPU_REQUEST
+              valueFrom:
+                configMapKeyRef:
+                  name: {{ include "clawbake.fullname" . }}
+                  key: instance-ttyd-cpu-request
+            - name: INSTANCE_TTYD_MEMORY_REQUEST
+              valueFrom:
+                configMapKeyRef:
+                  name: {{ include "clawbake.fullname" . }}
+                  key: instance-ttyd-memory-request
+            - name: INSTANCE_TTYD_CPU_LIMIT
+              valueFrom:
+                configMapKeyRef:
+                  name: {{ include "clawbake.fullname" . }}
+                  key: instance-ttyd-cpu-limit
+            - name: INSTANCE_TTYD_MEMORY_LIMIT
+              valueFrom:
+                configMapKeyRef:
+                  name: {{ include "clawbake.fullname" . }}
+                  key: instance-ttyd-memory-limit
           resources:
             {{- toYaml .Values.operator.resources | nindent 12 }}

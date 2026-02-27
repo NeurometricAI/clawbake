@@ -80,9 +80,12 @@ func TestReconcileCreate(t *testing.T) {
 	}
 
 	reconciler := &ClawInstanceReconciler{
-		Client:   k8sClient,
-		Scheme:   k8sClient.Scheme(),
-		Recorder: record.NewFakeRecorder(10),
+		Client:      k8sClient,
+		Scheme:      k8sClient.Scheme(),
+		Recorder:    record.NewFakeRecorder(10),
+		TtydImage:   "tsl0922/ttyd:alpine",
+		TtydPort:    7681,
+		TtydCommand: "/ttyd-bin/ttyd -p 7681 node /app/openclaw.mjs tui",
 	}
 
 	req := reconcile.Request{
@@ -111,7 +114,7 @@ func TestReconcileCreate(t *testing.T) {
 		t.Errorf("expected user-id label 'testuser', got '%s'", ns.Labels["clawbake.io/user-id"])
 	}
 
-	// Verify deployment was created
+	// Verify deployment was created with 2 containers (openclaw + ttyd)
 	deploy := &appsv1.Deployment{}
 	if err := k8sClient.Get(ctx, types.NamespacedName{Name: "openclaw", Namespace: "clawbake-test-instance"}, deploy); err != nil {
 		t.Fatalf("expected deployment to exist: %v", err)
@@ -119,11 +122,20 @@ func TestReconcileCreate(t *testing.T) {
 	if deploy.Spec.Template.Spec.Containers[0].Image != "ghcr.io/openclaw/openclaw:latest" {
 		t.Errorf("unexpected image: %s", deploy.Spec.Template.Spec.Containers[0].Image)
 	}
+	if len(deploy.Spec.Template.Spec.Containers) != 2 {
+		t.Fatalf("expected 2 containers, got %d", len(deploy.Spec.Template.Spec.Containers))
+	}
+	if deploy.Spec.Template.Spec.Containers[1].Name != "ttyd" {
+		t.Errorf("expected second container name 'ttyd', got %q", deploy.Spec.Template.Spec.Containers[1].Name)
+	}
 
-	// Verify service was created
+	// Verify service was created with 2 ports
 	svc := &corev1.Service{}
 	if err := k8sClient.Get(ctx, types.NamespacedName{Name: "openclaw", Namespace: "clawbake-test-instance"}, svc); err != nil {
 		t.Fatalf("expected service to exist: %v", err)
+	}
+	if len(svc.Spec.Ports) != 2 {
+		t.Fatalf("expected 2 service ports, got %d", len(svc.Spec.Ports))
 	}
 
 	// Verify PVC was created
@@ -345,6 +357,59 @@ func TestReconcileStartingToRunning(t *testing.T) {
 	}
 	if !found {
 		t.Error("expected Ready condition to exist")
+	}
+}
+
+func TestReconcileCreateWithoutTtyd(t *testing.T) {
+	k8sClient, _ := setupEnvtest(t)
+	ctx := context.Background()
+
+	instance := newTestInstance()
+	instance.Name = "test-no-ttyd"
+	if err := k8sClient.Create(ctx, instance); err != nil {
+		t.Fatalf("failed to create ClawInstance: %v", err)
+	}
+
+	reconciler := &ClawInstanceReconciler{
+		Client:      k8sClient,
+		Scheme:      k8sClient.Scheme(),
+		Recorder:    record.NewFakeRecorder(10),
+		TtydCommand: "", // no ttyd
+	}
+
+	req := reconcile.Request{
+		NamespacedName: types.NamespacedName{
+			Name:      instance.Name,
+			Namespace: instance.Namespace,
+		},
+	}
+
+	// First reconcile adds finalizer
+	if _, err := reconciler.Reconcile(ctx, req); err != nil {
+		t.Fatalf("first reconcile failed: %v", err)
+	}
+
+	// Second reconcile creates resources
+	if _, err := reconciler.Reconcile(ctx, req); err != nil {
+		t.Fatalf("second reconcile failed: %v", err)
+	}
+
+	// Verify deployment has only 1 container (no ttyd)
+	deploy := &appsv1.Deployment{}
+	if err := k8sClient.Get(ctx, types.NamespacedName{Name: "openclaw", Namespace: "clawbake-test-no-ttyd"}, deploy); err != nil {
+		t.Fatalf("expected deployment to exist: %v", err)
+	}
+	if len(deploy.Spec.Template.Spec.Containers) != 1 {
+		t.Fatalf("expected 1 container, got %d", len(deploy.Spec.Template.Spec.Containers))
+	}
+
+	// Verify service has only 1 port
+	svc := &corev1.Service{}
+	if err := k8sClient.Get(ctx, types.NamespacedName{Name: "openclaw", Namespace: "clawbake-test-no-ttyd"}, svc); err != nil {
+		t.Fatalf("expected service to exist: %v", err)
+	}
+	if len(svc.Spec.Ports) != 1 {
+		t.Fatalf("expected 1 service port, got %d", len(svc.Spec.Ports))
 	}
 }
 

@@ -94,7 +94,7 @@ func conditionRow(cond metav1.Condition) templ.Component {
 	})
 }
 
-func InstanceDetail(instance v1alpha1.ClawInstance, isAdmin bool) templ.Component {
+func InstanceDetail(instance v1alpha1.ClawInstance, isAdmin bool, ttydEnabled bool) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
@@ -254,13 +254,20 @@ func InstanceDetail(instance v1alpha1.ClawInstance, isAdmin bool) templ.Componen
 				return templ_7745c5c3_Err
 			}
 			if instance.Status.Phase == "Running" {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 18, "<p><a href=\"/proxy/\" target=\"_blank\" role=\"button\">Open Instance</a></p>")
-				if templ_7745c5c3_Err != nil {
-					return templ_7745c5c3_Err
+				if ttydEnabled {
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 18, "<div class=\"grid\"><a href=\"/proxy/web/\" target=\"_blank\" role=\"button\">Open Web UI</a> <a href=\"/proxy/tui/\" target=\"_blank\" role=\"button\" class=\"secondary\">Open Terminal</a></div>")
+					if templ_7745c5c3_Err != nil {
+						return templ_7745c5c3_Err
+					}
+				} else {
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 19, "<p><a href=\"/proxy/web/\" target=\"_blank\" role=\"button\">Open Web UI</a></p>")
+					if templ_7745c5c3_Err != nil {
+						return templ_7745c5c3_Err
+					}
 				}
 			}
 			if len(instance.Status.Conditions) > 0 {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 19, "<h3>Conditions</h3><table><thead><tr><th>Type</th><th>Status</th><th>Reason</th><th>Message</th></tr></thead> <tbody>")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 20, "<h3>Conditions</h3><table><thead><tr><th>Type</th><th>Status</th><th>Reason</th><th>Message</th></tr></thead> <tbody>")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
@@ -270,25 +277,25 @@ func InstanceDetail(instance v1alpha1.ClawInstance, isAdmin bool) templ.Componen
 						return templ_7745c5c3_Err
 					}
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 20, "</tbody></table>")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 21, "</tbody></table>")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 21, "<footer><a href=\"/\" role=\"button\" class=\"secondary outline\">Back</a> <button class=\"contrast outline\" hx-delete=\"")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 22, "<footer><a href=\"/\" role=\"button\" class=\"secondary outline\">Back</a> <button class=\"contrast outline\" hx-delete=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var16 string
 			templ_7745c5c3_Var16, templ_7745c5c3_Err = templ.JoinStringErrs("/ui/instances/" + instance.Name + "?redirect=true")
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/instance_detail.templ`, Line: 94, Col: 68}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/instance_detail.templ`, Line: 105, Col: 68}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var16))
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 22, "\" hx-confirm=\"Delete this instance?\" hx-swap=\"none\">Delete</button></footer></article>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 23, "\" hx-confirm=\"Delete this instance?\" hx-swap=\"none\">Delete</button></footer></article>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}

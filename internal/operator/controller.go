@@ -39,10 +39,14 @@ const finalizerName = "clawbake.io/finalizer"
 
 type ClawInstanceReconciler struct {
 	client.Client
-	Scheme              *runtime.Scheme
-	Recorder            record.EventRecorder
-	ServerNamespace     string
+	Scheme               *runtime.Scheme
+	Recorder             record.EventRecorder
+	ServerNamespace      string
 	DefaultGatewayConfig string
+	TtydImage            string
+	TtydPort             int32
+	TtydCommand          string
+	TtydResources        corev1.ResourceRequirements
 }
 
 func (r *ClawInstanceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
@@ -280,6 +284,89 @@ func (r *ClawInstanceReconciler) reconcileDeployment(ctx context.Context, instan
 			},
 		}
 
+		containers := []corev1.Container{
+			{
+				Name:    "openclaw",
+				Image:   instance.Spec.Image,
+				Command: []string{"node", "/app/openclaw.mjs", "gateway", "run", "--bind", "lan", "--allow-unconfigured"},
+				Ports: []corev1.ContainerPort{
+					{
+						Name:          "http",
+						ContainerPort: 18789,
+						Protocol:      corev1.ProtocolTCP,
+					},
+				},
+				Env: []corev1.EnvVar{
+					{Name: "NODE_OPTIONS", Value: "--max-old-space-size=1536 --disable-warning=ExperimentalWarning"},
+					{Name: "OPENCLAW_NODE_OPTIONS_READY", Value: "1"},
+					{Name: "OPENCLAW_GATEWAY_TOKEN", Value: instance.Spec.GatewayToken},
+				},
+				ReadinessProbe: &corev1.Probe{
+					ProbeHandler: corev1.ProbeHandler{
+						HTTPGet: &corev1.HTTPGetAction{
+							Path: "/__openclaw/control-ui-config.json",
+							Port: intstr.FromInt32(18789),
+						},
+					},
+					InitialDelaySeconds: 5,
+					PeriodSeconds:       5,
+				},
+				Resources:    buildResourceRequirements(instance.Spec.Resources),
+				VolumeMounts: volumeMounts,
+			},
+		}
+
+		if r.TtydCommand != "" {
+			// Add emptyDir volume for the ttyd binary
+			volumes = append(volumes, corev1.Volume{
+				Name: "ttyd-bin",
+				VolumeSource: corev1.VolumeSource{
+					EmptyDir: &corev1.EmptyDirVolumeSource{},
+				},
+			})
+
+			// Init container copies ttyd binary from the ttyd image
+			initContainers = append(initContainers, corev1.Container{
+				Name:    "install-ttyd",
+				Image:   r.TtydImage,
+				Command: []string{"cp", "/usr/bin/ttyd", "/ttyd-bin/ttyd"},
+				VolumeMounts: []corev1.VolumeMount{
+					{Name: "ttyd-bin", MountPath: "/ttyd-bin"},
+				},
+			})
+
+			ttydMounts := append(volumeMounts, corev1.VolumeMount{
+				Name: "ttyd-bin", MountPath: "/ttyd-bin",
+			})
+
+			containers = append(containers, corev1.Container{
+				Name:    "ttyd",
+				Image:   instance.Spec.Image,
+				Command: []string{"sh", "-c", r.TtydCommand},
+				Env: []corev1.EnvVar{
+					{Name: "OPENCLAW_GATEWAY_TOKEN", Value: instance.Spec.GatewayToken},
+				},
+				Ports: []corev1.ContainerPort{
+					{
+						Name:          "ttyd",
+						ContainerPort: r.TtydPort,
+						Protocol:      corev1.ProtocolTCP,
+					},
+				},
+				ReadinessProbe: &corev1.Probe{
+					ProbeHandler: corev1.ProbeHandler{
+						TCPSocket: &corev1.TCPSocketAction{
+							Port: intstr.FromInt32(r.TtydPort),
+						},
+					},
+					InitialDelaySeconds: 10,
+					PeriodSeconds:       5,
+				},
+				Resources:    r.TtydResources,
+				VolumeMounts: ttydMounts,
+			})
+		}
+
 		deploy.Labels = labels
 		deploy.Spec = appsv1.DeploymentSpec{
 			Replicas: &replicas,
@@ -294,38 +381,10 @@ func (r *ClawInstanceReconciler) reconcileDeployment(ctx context.Context, instan
 					SecurityContext: &corev1.PodSecurityContext{
 						FSGroup: ptr.To(int64(1000)),
 					},
-					InitContainers: initContainers,
-					Containers: []corev1.Container{
-						{
-							Name:    "openclaw",
-							Image:   instance.Spec.Image,
-							Command: []string{"node", "/app/openclaw.mjs", "gateway", "run", "--bind", "lan", "--allow-unconfigured"},
-							Ports: []corev1.ContainerPort{
-								{
-									Name:          "http",
-									ContainerPort: 18789,
-									Protocol:      corev1.ProtocolTCP,
-								},
-							},
-							Env: []corev1.EnvVar{
-								{Name: "NODE_OPTIONS", Value: "--max-old-space-size=1536"},
-								{Name: "OPENCLAW_GATEWAY_TOKEN", Value: instance.Spec.GatewayToken},
-							},
-							ReadinessProbe: &corev1.Probe{
-								ProbeHandler: corev1.ProbeHandler{
-									HTTPGet: &corev1.HTTPGetAction{
-										Path: "/__openclaw/control-ui-config.json",
-										Port: intstr.FromInt32(18789),
-									},
-								},
-								InitialDelaySeconds: 5,
-								PeriodSeconds:       5,
-							},
-							Resources:    buildResourceRequirements(instance.Spec.Resources),
-							VolumeMounts: volumeMounts,
-						},
-					},
-					Volumes: volumes,
+					EnableServiceLinks: ptr.To(false),
+					InitContainers:     initContainers,
+					Containers:         containers,
+					Volumes:            volumes,
 				},
 			},
 		}
@@ -369,16 +428,25 @@ func (r *ClawInstanceReconciler) reconcileService(ctx context.Context, instance 
 		svc.Labels = map[string]string{
 			"clawbake.io/instance": instance.Name,
 		}
+		ports := []corev1.ServicePort{
+			{
+				Name:       "http",
+				Port:       18789,
+				TargetPort: intstr.FromString("http"),
+				Protocol:   corev1.ProtocolTCP,
+			},
+		}
+		if r.TtydCommand != "" {
+			ports = append(ports, corev1.ServicePort{
+				Name:       "ttyd",
+				Port:       r.TtydPort,
+				TargetPort: intstr.FromString("ttyd"),
+				Protocol:   corev1.ProtocolTCP,
+			})
+		}
 		svc.Spec = corev1.ServiceSpec{
 			Selector: map[string]string{"app": "openclaw"},
-			Ports: []corev1.ServicePort{
-				{
-					Name:       "http",
-					Port:       18789,
-					TargetPort: intstr.FromString("http"),
-					Protocol:   corev1.ProtocolTCP,
-				},
-			},
+			Ports:    ports,
 		}
 		return nil
 	})

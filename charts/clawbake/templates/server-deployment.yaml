@@ -105,6 +105,11 @@ spec:
                 configMapKeyRef:
                   name: {{ include "clawbake.fullname" . }}
                   key: instance-gateway-config
+            - name: TTYD_ENABLED
+              valueFrom:
+                configMapKeyRef:
+                  name: {{ include "clawbake.fullname" . }}
+                  key: instance-ttyd-enabled
             - name: BASE_URL
               value: {{ .Values.server.baseURL | default (printf "https://%s" .Values.ingress.host) | quote }}
             {{- if .Values.slack.enabled }}

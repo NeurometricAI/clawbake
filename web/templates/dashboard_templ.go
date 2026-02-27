@@ -10,7 +10,7 @@ import templruntime "github.com/a-h/templ/runtime"
 
 import v1alpha1 "github.com/clawbake/clawbake/api/v1alpha1"
 
-func Dashboard(instances []v1alpha1.ClawInstance, isAdmin bool, hasInstance bool, userNames map[string]string, placeholders []string) templ.Component {
+func Dashboard(instances []v1alpha1.ClawInstance, isAdmin bool, hasInstance bool, userNames map[string]string, placeholders []string, ttydEnabled bool) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
@@ -117,7 +117,7 @@ func Dashboard(instances []v1alpha1.ClawInstance, isAdmin bool, hasInstance bool
 				return templ_7745c5c3_Err
 			}
 			for _, inst := range instances {
-				templ_7745c5c3_Err = InstanceCard(inst, userNames).Render(ctx, templ_7745c5c3_Buffer)
+				templ_7745c5c3_Err = InstanceCard(inst, userNames, ttydEnabled).Render(ctx, templ_7745c5c3_Buffer)
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
