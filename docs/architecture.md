@@ -1,4 +1,4 @@
-# Clawbake Architecture Plan
+# Clawbake Architecture
 
 ## Overview
 
@@ -62,14 +62,14 @@ The operator watches these and reconciles the actual cluster state.
 
 | Component | Technology | Rationale |
 |-----------|-----------|-----------|
-| Language | Go 1.26 | K8s ecosystem standard, client-go, controller-runtime |
+| Language | Go 1.25 | K8s ecosystem standard, client-go, controller-runtime |
 | Web Framework | Echo v4 | Lightweight, middleware-friendly, OIDC support |
 | ORM | sqlc | Type-safe SQL, no magic, fast |
-| Database | PostgreSQL 18 | Required by spec |
+| Database | PostgreSQL 18 | Robust, well-supported |
 | Operator | controller-runtime | Standard K8s operator library |
 | CRD | kubebuilder | Scaffolding, code generation |
 | Templates | templ | Type-safe Go HTML templates |
-| CSS | Tailwind CSS | Utility-first, fast to build |
+| CSS | Pico CSS | Minimal, classless CSS framework |
 | Auth | coreos/go-oidc | Standard OIDC library |
 | Slack | slack-go | Official Slack SDK for Go |
 | Helm | Helm 3 | Deployment packaging |
@@ -84,6 +84,7 @@ The operator watches these and reconciles the actual cluster state.
 │   └── operator/         # Operator entry point
 ├── internal/
 │   ├── auth/             # OIDC authentication
+│   ├── config/           # Server configuration
 │   ├── database/         # sqlc queries and models
 │   ├── handler/          # HTTP route handlers
 │   ├── bot/              # Slack bot
@@ -93,8 +94,7 @@ The operator watches these and reconciles the actual cluster state.
 │   └── v1alpha1/         # CRD type definitions
 ├── web/
 │   ├── templates/        # templ templates
-│   ├── static/           # Static assets
-│   └── tailwind.config.js
+│   └── static/           # Static assets (CSS)
 ├── charts/
 │   └── clawbake/         # Helm chart
 │       ├── Chart.yaml
@@ -110,9 +110,8 @@ The operator watches these and reconciles the actual cluster state.
 │   └── sqlc.yaml
 ├── tests/
 │   ├── e2e/              # End-to-end tests
-│   └── integration/      # Integration tests with envtest
-├── docs/
-│   └── plans/
+│   └── integration/      # Integration tests
+├── docs/                 # Documentation
 ├── Makefile
 ├── Dockerfile
 ├── go.mod
@@ -125,36 +124,29 @@ The operator watches these and reconciles the actual cluster state.
 apiVersion: clawbake.io/v1alpha1
 kind: ClawInstance
 metadata:
-  name: user-johndoe
+  name: <user-uuid>
   namespace: clawbake
 spec:
-  userId: "johndoe"
-  displayName: "John Doe"
+  userId: "<user-uuid>"
   image: "ghcr.io/openclaw/openclaw:latest"
+  gatewayToken: "<generated>"
+  gatewayConfig: '{"gateway": {...}}'
   resources:
     requests:
-      cpu: "100m"
-      memory: "256Mi"
-    limits:
       cpu: "500m"
-      memory: "512Mi"
+      memory: "1Gi"
+    limits:
+      cpu: "2000m"
+      memory: "2Gi"
   storage:
     size: "5Gi"
-    storageClass: ""  # default
-  ingress:
-    enabled: true
-    host: "johndoe.claw.example.com"
 status:
-  phase: Running  # Pending, Creating, Running, Failed, Terminating
-  namespace: clawbake-johndoe
-  url: "https://johndoe.claw.example.com"
+  phase: Running  # Pending, Creating, Starting, Running, Failed, Terminating
+  namespace: clawbake-<user-uuid>
   conditions:
-    - type: NamespaceReady
+    - type: Ready
       status: "True"
-    - type: DeploymentReady
-      status: "True"
-    - type: IngressReady
-      status: "True"
+      reason: ReconcileComplete
 ```
 
 ## Database Schema
@@ -164,7 +156,7 @@ CREATE TABLE users (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     email TEXT UNIQUE NOT NULL,
     name TEXT NOT NULL,
-    picture TEXT,
+    picture TEXT DEFAULT '',
     role TEXT NOT NULL DEFAULT 'user',  -- 'admin' or 'user'
     oidc_subject TEXT UNIQUE NOT NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
@@ -175,49 +167,14 @@ CREATE TABLE instance_defaults (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     image TEXT NOT NULL DEFAULT 'ghcr.io/openclaw/openclaw:latest',
     cpu_request TEXT NOT NULL DEFAULT '100m',
-    memory_request TEXT NOT NULL DEFAULT '256Mi',
+    memory_request TEXT NOT NULL DEFAULT '1Gi',
     cpu_limit TEXT NOT NULL DEFAULT '500m',
-    memory_limit TEXT NOT NULL DEFAULT '512Mi',
+    memory_limit TEXT NOT NULL DEFAULT '2Gi',
     storage_size TEXT NOT NULL DEFAULT '5Gi',
     ingress_domain TEXT NOT NULL DEFAULT 'claw.example.com',
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 ```
 
-## Implementation Phases
+Note: The `instance_defaults` table has been extended with a `gateway_config` column (migration 000004) to store per-instance gateway configuration as JSON.
 
-### Phase 1: Foundation
-- Go module initialization
-- Project structure
-- Makefile
-- CLAUDE.md
-- Enable PostgreSQL in devcontainer
-
-### Phase 2: CRD + Operator (parallel track A)
-- Define CRD types with kubebuilder markers
-- Generate CRD manifests
-- Implement reconciler
-- Unit tests with envtest
-
-### Phase 3: Web Application (parallel track B)
-- Database migrations and sqlc
-- OIDC authentication middleware
-- REST API handlers (CRUD ClawInstance)
-- Admin endpoints
-- templ templates + Tailwind UI
-- Unit tests
-
-### Phase 4: Slack Bot
-- Slack event handling
-- Message routing to user instances
-- Instance provisioning commands
-
-### Phase 5: Helm Chart
-- Chart structure
-- CRD, operator, web app, RBAC templates
-- Configurable values
-
-### Phase 6: Integration Testing
-- k3d cluster setup
-- End-to-end test suite
-- CI-ready test scripts

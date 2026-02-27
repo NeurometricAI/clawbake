@@ -18,6 +18,7 @@ System for managing multiple openclaw instances in Kubernetes.
 | `internal/auth/` | OIDC authentication |
 | `internal/database/` | sqlc-generated DB code |
 | `internal/handler/` | HTTP route handlers |
+| `internal/config/` | Server configuration |
 | `internal/bot/` | Slack bot |
 | `internal/operator/` | Operator reconciler |
 | `api/v1alpha1/` | CRD type definitions |

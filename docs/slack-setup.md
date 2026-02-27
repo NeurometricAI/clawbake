@@ -68,24 +68,29 @@ helm install clawbake charts/clawbake \
 
 ### Local development
 
-1. Start a tunnel to the **server port** (8081, not 8080 which is the k3d ingress):
+1. Start a tunnel to the server. If running in k3d: `ngrok http 8080` (on the host). If running the server directly: `ngrok http 8081` (host or guest).
 
-   ```bash
-   ngrok http 8081
+2. Use the ngrok URL as `YOUR_DOMAIN` in the manifest and create the Slack app (steps 1-3 above).
+
+3. Add the credentials to your Helm values file (`charts/clawbake/values-local.yaml`) or `.env.local`:
+
+   ```yaml
+   # values-local.yaml
+   slack:
+     enabled: true
+     botToken: "xoxb-..."
+     signingSecret: "..."
    ```
 
-2. Use the ngrok URL as `YOUR_DOMAIN` in the manifest and create the Slack app (steps 1–3 above).
-
-3. Add the credentials to `.env.local`:
-
    ```
+   # .env.local (for make run-server)
    SLACK_BOT_TOKEN=xoxb-...
    SLACK_SIGNING_SECRET=...
    ```
 
-   Both must be set — the server skips registering `/slack/*` routes entirely when either is empty, and you'll get 404s.
+   Both must be set -- the server skips registering `/slack/*` routes entirely when either is empty, and you'll get 404s.
 
-4. Restart the server (`make run-server`) for the new env vars to take effect.
+4. Redeploy (`make helm-install-local`) or restart the server (`make run-server`) for the new config to take effect.
 
 When the ngrok URL changes, update it in two places in the Slack app settings: **Event Subscriptions** > Request URL, and **Slash Commands** > edit the `/clawbake` command's Request URL.
 
@@ -112,7 +117,9 @@ Once installed, users can interact with the bot in two ways:
 | Command | Description |
 |---------|-------------|
 | `/clawbake create` | Provision a new openclaw instance |
-| `/clawbake status` | Show instance status, namespace, and URL |
+| `/clawbake status` | Show instance status and namespace |
+| `/clawbake open` | Get a link to your instance web UI |
+| `/clawbake open tui` | Get a link to your instance terminal (when ttyd is enabled) |
 | `/clawbake delete` | Delete your instance |
 | `/clawbake help` | Show available commands |
 

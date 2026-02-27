@@ -51,17 +51,17 @@ Build images for both binaries:
 
 ```bash
 # Server
-docker build -t ghcr.io/neurometric/clawbake-server:0.1.0 --build-arg BINARY=server .
+docker build -t ghcr.io/neurometricai/clawbake-server:0.1.0 --build-arg BINARY=server .
 
 # Operator
-docker build -t ghcr.io/neurometric/clawbake-operator:0.1.0 --build-arg BINARY=operator .
+docker build -t ghcr.io/neurometricai/clawbake-operator:0.1.0 --build-arg BINARY=operator .
 ```
 
 The Dockerfile uses a multi-stage build:
 1. **Builder**: `golang:1.26-alpine` compiles a static binary (`CGO_ENABLED=0`)
-2. **Runtime**: `alpine:3.21` with only the binary and CA certificates
+2. **Runtime**: `alpine:3.21` with only the binary, static assets, and CA certificates
 
-For local k3d development, use `make docker-build` to build and load images into the cluster.
+For local k3d development, use `make k3d-import` to build and load images into the cluster.
 
 ## 2. Configuration
 
@@ -77,7 +77,7 @@ At minimum, configure these for a production deployment:
 | `auth.oidc.redirectUrl` | Callback URL | `https://clawbake.example.com/auth/callback` |
 | `auth.sessionSecret` | Session encryption key | `$(openssl rand -base64 32)` |
 | `ingress.host` | Server hostname | `clawbake.example.com` |
-| `instanceDefaults.domain` | Base domain for user instances | `claw.example.com` |
+| `server.baseURL` | Public URL (defaults to `https://<ingress.host>`) | `https://clawbake.example.com` |
 
 ### Database Options
 
@@ -101,7 +101,7 @@ See `charts/clawbake/values.yaml` for all configurable values. Key sections:
 server:
   replicas: 1
   image:
-    repository: ghcr.io/neurometric/clawbake-server
+    repository: ghcr.io/neurometricai/clawbake-server
     tag: ""  # defaults to Chart.AppVersion
   resources:
     requests: { cpu: 100m, memory: 128Mi }
@@ -110,7 +110,7 @@ server:
 operator:
   replicas: 1
   image:
-    repository: ghcr.io/neurometric/clawbake-operator
+    repository: ghcr.io/neurometricai/clawbake-operator
     tag: ""
   resources:
     requests: { cpu: 100m, memory: 128Mi }
@@ -124,12 +124,15 @@ ingress:
 
 instanceDefaults:
   image: ghcr.io/openclaw/openclaw:latest
-  domain: claw.example.com
-  cpuRequest: 100m
-  cpuLimit: 500m
-  memoryRequest: 256Mi
-  memoryLimit: 512Mi
+  cpuRequest: 500m
+  cpuLimit: 2000m
+  memoryRequest: 1Gi
+  memoryLimit: 2Gi
   storageSize: 5Gi
+  ttyd:
+    enabled: true
+    image: tsl0922/ttyd:alpine
+    port: 7681
 
 slack:
   enabled: false
@@ -147,12 +150,11 @@ Quick start for full-k3d deployment:
 
 ```bash
 make k3d-create          # Create cluster + connect devcontainer network
-make docker-build        # Build images
-make migrate-up          # Run migrations
-make helm-install-local  # Install with local dev values (nip.io, http)
+make helm-install-local  # Builds images, and installs helm chart with local dev values (nip.io, http)
 ```
 
 The k3d cluster maps `localhost:8080` → cluster port 80 and `localhost:8443` → port 443. Instance URLs use nip.io for wildcard DNS: `http://<name>.claw.127-0-0-1.nip.io:8080`.
+You can also run just the server component directly with `make run-server`.  It requires the rest of the components running in k3d, and listens on port `8081`
 
 ### Production
 
@@ -169,8 +171,7 @@ helm upgrade --install clawbake charts/clawbake \
   --set auth.oidc.redirectUrl="https://clawbake.example.com/auth/callback" \
   --set auth.sessionSecret="$(openssl rand -base64 32)" \
   --set ingress.host="clawbake.example.com" \
-  --set ingress.className="nginx" \
-  --set instanceDefaults.domain="claw.example.com"
+  --set ingress.className="nginx"
 ```
 
 For sensitive values, use a values file instead of `--set`:
@@ -198,7 +199,7 @@ curl http://localhost:8080/healthz
 
 ## 4. Database Migrations
 
-Migrations use [golang-migrate](https://github.com/golang-migrate/migrate) and live in `db/migrations/`.
+Migrations use [golang-migrate](https://github.com/golang-migrate/migrate) and live in `db/migrations/`.  They run as an init container in the server pod when deploying the helm chart to a kubernetes cluster.  When running the server directly for a tighter feedback loop, you may want to run migrations manually with:
 
 ```bash
 # Apply all pending migrations
