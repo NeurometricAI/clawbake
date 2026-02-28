@@ -18,6 +18,7 @@ WORKDIR ${HOME}
 
 # Install mise to manage the tools needed for this project
 RUN curl -sS https://mise.run | sh > /dev/null
+ENV PATH=${HOME}/.local/bin/:${PATH}
 
 # Make sure mise is active for the common shells, e.g. installed tools are in PATH
 RUN echo 'eval "$($HOME/.local/bin/mise activate bash)"' >> ~/.bashrc
@@ -25,7 +26,7 @@ RUN echo 'eval "$($HOME/.local/bin/mise activate zsh)"' >> ~/.zshrc
 RUN mkdir -p ~/.config/fish/conf.d && echo '$HOME/.local/bin/mise activate fish | source' >> ~/.config/fish/conf.d/mise.fish
 
 # Copying so global install included in docker build, but also mounting in
-# devconainter.json so user changes persist
+# devcontainer.json so user changes persist
 COPY --chown=${USERNAME}:${USERNAME} config/mise-global.toml ${HOME}/.config/mise/config.toml
 RUN ${HOME}/.local/bin/mise -y install
 
