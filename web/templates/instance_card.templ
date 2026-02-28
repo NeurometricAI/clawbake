@@ -2,9 +2,9 @@ package templates
 
 import v1alpha1 "github.com/clawbake/clawbake/api/v1alpha1"
 
-templ InstanceCreated(instance v1alpha1.ClawInstance, ttydEnabled bool) {
+templ InstanceCreated(instance v1alpha1.ClawInstance, ttydEnabled bool, currentUserID string) {
 	<div id="instance-list" hx-swap-oob="innerHTML">
-		@InstanceCard(instance, nil, ttydEnabled)
+		@InstanceCard(instance, nil, ttydEnabled, currentUserID)
 	</div>
 	<span id="new-instance-btn" hx-swap-oob="innerHTML"></span>
 }
@@ -21,7 +21,7 @@ templ StatusBadge(instance v1alpha1.ClawInstance) {
 	>{ displayPhase(instance.Status.Phase) }</span>
 }
 
-templ InstanceCard(instance v1alpha1.ClawInstance, userNames map[string]string, ttydEnabled bool) {
+templ InstanceCard(instance v1alpha1.ClawInstance, userNames map[string]string, ttydEnabled bool, currentUserID string) {
 	<article id={ "instance-" + instance.Name }>
 		<header>
 			<div class="instance-header">
@@ -33,7 +33,7 @@ templ InstanceCard(instance v1alpha1.ClawInstance, userNames map[string]string, 
 			<p><strong>Owner:</strong> { name }</p>
 		}
 		<p><strong>Image:</strong> { instance.Spec.Image }</p>
-		if instance.Status.Phase == "Running" {
+		if instance.Status.Phase == "Running" && instance.Spec.UserId == currentUserID {
 			<p>
 				<a href="/proxy/web/" target="_blank">Web UI</a>
 				if ttydEnabled {

@@ -14,7 +14,7 @@ templ conditionRow(cond metav1.Condition) {
 	</tr>
 }
 
-templ InstanceDetail(instance v1alpha1.ClawInstance, isAdmin bool, ttydEnabled bool) {
+templ InstanceDetail(instance v1alpha1.ClawInstance, isAdmin bool, ttydEnabled bool, isOwner bool) {
 	@Layout("Instance", isAdmin) {
 		<article>
 			<header>
@@ -62,7 +62,7 @@ templ InstanceDetail(instance v1alpha1.ClawInstance, isAdmin bool, ttydEnabled b
 					}
 				</tbody>
 			</table>
-			if instance.Status.Phase == "Running" {
+			if instance.Status.Phase == "Running" && isOwner {
 				if ttydEnabled {
 					<div class="grid">
 						<a href="/proxy/web/" target="_blank" role="button">

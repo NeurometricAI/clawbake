@@ -94,7 +94,7 @@ func conditionRow(cond metav1.Condition) templ.Component {
 	})
 }
 
-func InstanceDetail(instance v1alpha1.ClawInstance, isAdmin bool, ttydEnabled bool) templ.Component {
+func InstanceDetail(instance v1alpha1.ClawInstance, isAdmin bool, ttydEnabled bool, isOwner bool) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
@@ -253,7 +253,7 @@ func InstanceDetail(instance v1alpha1.ClawInstance, isAdmin bool, ttydEnabled bo
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			if instance.Status.Phase == "Running" {
+			if instance.Status.Phase == "Running" && isOwner {
 				if ttydEnabled {
 					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 18, "<div class=\"grid\"><a href=\"/proxy/web/\" target=\"_blank\" role=\"button\">Open Web UI</a> <a href=\"/proxy/tui/\" target=\"_blank\" role=\"button\" class=\"secondary\">Open Terminal</a></div>")
 					if templ_7745c5c3_Err != nil {

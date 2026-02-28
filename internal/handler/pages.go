@@ -78,7 +78,7 @@ func (h *Handler) PageDashboard(c echo.Context) error {
 	}
 	placeholders := jsonutil.ExtractPlaceholders(defaults.GatewayConfig)
 
-	return render(c, http.StatusOK, templates.Dashboard(instances, user.Role == "admin", hasInstance, userNames, placeholders, h.Config.TtydEnabled))
+	return render(c, http.StatusOK, templates.Dashboard(instances, user.Role == "admin", hasInstance, userNames, placeholders, h.Config.TtydEnabled, uid))
 }
 
 func (h *Handler) PageCreateInstance(c echo.Context) error {
@@ -182,15 +182,15 @@ func (h *Handler) PageInstanceDetail(c echo.Context) error {
 	}
 
 	user := auth.UserFromContext(c.Request().Context())
+	userID, _ := user.ID.Value()
+	uid, _ := userID.(string)
 	if user.Role != "admin" {
-		userID, _ := user.ID.Value()
-		uid, _ := userID.(string)
 		if instance.Spec.UserId != uid {
 			return echo.NewHTTPError(http.StatusNotFound, "instance not found")
 		}
 	}
 
-	return render(c, http.StatusOK, templates.InstanceDetail(*instance, user.Role == "admin", h.Config.TtydEnabled))
+	return render(c, http.StatusOK, templates.InstanceDetail(*instance, user.Role == "admin", h.Config.TtydEnabled, instance.Spec.UserId == uid))
 }
 
 func (h *Handler) PageInstanceStatus(c echo.Context) error {

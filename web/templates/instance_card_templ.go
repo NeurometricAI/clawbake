@@ -10,7 +10,7 @@ import templruntime "github.com/a-h/templ/runtime"
 
 import v1alpha1 "github.com/clawbake/clawbake/api/v1alpha1"
 
-func InstanceCreated(instance v1alpha1.ClawInstance, ttydEnabled bool) templ.Component {
+func InstanceCreated(instance v1alpha1.ClawInstance, ttydEnabled bool, currentUserID string) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
@@ -35,7 +35,7 @@ func InstanceCreated(instance v1alpha1.ClawInstance, ttydEnabled bool) templ.Com
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = InstanceCard(instance, nil, ttydEnabled).Render(ctx, templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = InstanceCard(instance, nil, ttydEnabled, currentUserID).Render(ctx, templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -143,7 +143,7 @@ func StatusBadge(instance v1alpha1.ClawInstance) templ.Component {
 	})
 }
 
-func InstanceCard(instance v1alpha1.ClawInstance, userNames map[string]string, ttydEnabled bool) templ.Component {
+func InstanceCard(instance v1alpha1.ClawInstance, userNames map[string]string, ttydEnabled bool, currentUserID string) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
@@ -238,7 +238,7 @@ func InstanceCard(instance v1alpha1.ClawInstance, userNames map[string]string, t
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		if instance.Status.Phase == "Running" {
+		if instance.Status.Phase == "Running" && instance.Spec.UserId == currentUserID {
 			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 18, "<p><a href=\"/proxy/web/\" target=\"_blank\">Web UI</a> ")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
