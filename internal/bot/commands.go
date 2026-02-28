@@ -287,18 +287,24 @@ func (b *Bot) handleHelp(ctx context.Context, c echo.Context, cmdName string) er
 	}
 
 	name := strings.TrimPrefix(cmdName, "/")
-	return respondSlack(c, fmt.Sprintf("*%s Commands*\n", strings.ToUpper(name[:1])+name[1:])+
-		createUsage+"\n"+
-		fmt.Sprintf("• `%s status` - Show your instance status\n", cmdName)+
-		fmt.Sprintf("• `%s open` - Get a link to your instance web UI\n", cmdName)+
-		func() string {
-			if b.ttydEnabled {
-				return fmt.Sprintf("• `%s open tui` - Get a link to your instance terminal\n", cmdName)
-			}
-			return ""
-		}()+
-		fmt.Sprintf("• `%s delete` - Delete your instance\n", cmdName)+
-		fmt.Sprintf("• `%s help` - Show this help message", cmdName))
+	title := strings.ToUpper(name[:1]) + name[1:]
+
+	help := fmt.Sprintf("*%s Bot*\n", title) +
+		fmt.Sprintf("Manage your openclaw instance from Slack.\n\n") +
+		fmt.Sprintf("*Slash Commands*\n") +
+		createUsage + "\n" +
+		fmt.Sprintf("• `%s status` - Show your instance status\n", cmdName) +
+		fmt.Sprintf("• `%s open` - Get a link to your instance web UI\n", cmdName)
+	if b.ttydEnabled {
+		help += fmt.Sprintf("• `%s open tui` - Get a link to your instance terminal\n", cmdName)
+	}
+	help += fmt.Sprintf("• `%s delete` - Delete your instance\n", cmdName) +
+		fmt.Sprintf("• `%s help` - Show this help message\n\n", cmdName) +
+		"*Chat with your instance*\n" +
+		fmt.Sprintf("You can also send messages directly to your running openclaw instance by sending a DM to <@%s> or @mentioning <@%s> in a channel the bot has been added to. ", title, title) +
+		"Your message will be forwarded to the instance and the response posted back to you."
+
+	return respondSlack(c, help)
 }
 
 func generateToken() string {
