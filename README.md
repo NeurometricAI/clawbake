@@ -107,6 +107,23 @@ helm install clawbake oci://ghcr.io/neurometricai/charts/clawbake \
 
 See [`charts/clawbake/values.yaml`](charts/clawbake/values.yaml) for all available configuration.
 
+## Security
+
+**Use at your own risk.** This project has not undergone a security audit and minimal effort has been put into hardening it so far. It is a prototype and should be treated accordingly.
+
+### What's in place
+
+- **OIDC gates all access.** Every route — the dashboard, API, admin endpoints, and the reverse proxy to instances — requires authentication via Google OIDC. Unauthenticated users cannot reach any functionality. Admin routes have an additional authorization check.
+- **NetworkPolicy isolation.** The operator creates a Kubernetes NetworkPolicy (`allow-clawbake-server-only`) in each user's instance namespace. This policy restricts all ingress traffic so that only the clawbake server pod can communicate with the openclaw pods. Users cannot access each other's instances directly, and the instances are not reachable from outside the cluster.
+- **Slack bot matches by email.** The Slack bot identifies users by matching their Slack profile email against OIDC-authenticated emails in the database. This should be fine as long as Slack accounts in the workspace are tied to the same identity provider used for OIDC (e.g. the same Google org), since the emails will be consistent.
+
+### Known insecurities
+
+- **OpenClaw gateway runs in a permissive mode.** To get the openclaw gateway working behind the clawbake reverse proxy, it is started with `--bind lan --allow-unconfigured`. This disables some of openclaw's built-in access controls. The NetworkPolicy described above is the primary mitigation — since only the clawbake server can reach the instance pods, the permissive gateway configuration is not directly exposed to the network.
+- **No egress restrictions.** The NetworkPolicy only restricts ingress. Openclaw instances have unrestricted outbound network access.
+- **No rate limiting or abuse prevention.** There are no rate limits on the API or proxy endpoints.
+- **Session management is basic.** Session tokens are cookie-based with a configurable secret, but there is no token rotation or advanced session management.
+
 ## License
 
 Proprietary.
