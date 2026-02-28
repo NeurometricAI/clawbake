@@ -24,9 +24,9 @@ services:
       # home directory, you will have to delete the volume/container and rebuild
       #
       - home_directory:/home/vscode
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
+
     command: sleep infinity
+
     environment:
       AWS_PROFILE: neurometric
       EDITOR: code -w
@@ -48,6 +48,33 @@ services:
         required: false
       - path: ../.env.local
         required: false
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+      - "clawbake.127-0-0-1.nip.io:host-gateway"
+
+    # All host ports become localhost inside the container
+    # Everything just works, no per-port config
+    # Breaks container network isolation entirely, may conflict with other things, extra_hosts and port forwarding stop working
+    #
+    # network_mode: host
+
+    # Puts k3d on the same network as the devcontainer, allowing one to reach
+    # the k3d loadbalancer container from within a devcontainer by its Docker
+    # DNS name: k3d-clawbake-serverlb:80 The extra_hosts above also maps dns
+    # names so that the loadbalancer can forward by Host to the correct Service
+    # 
+    # also needs networks: section at top level
+    #
+    networks:
+      - default
+      - k3d
+
+# Creats the network that k3d then attaches to.  Needed for the networks: section in the devcontainer service above
+#
+networks:
+  k3d:
+    external: false
+    name: k3d-clawbake
 
 volumes:
   home_directory:

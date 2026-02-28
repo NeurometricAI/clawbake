@@ -26,6 +26,8 @@
         "init-aws-cli": "mkdir -p ~/.aws && cat ${containerWorkspaceFolder}/.devcontainer/config/aws-cli-config.ini | envsubst > ~/.aws/config",
         "custom-commands": ["/bin/bash", "${containerWorkspaceFolder}/.devcontainer/scripts/custom-commands.sh", "run", "postCreateCommand"],
         "init-mise": ["/bin/bash", "${containerWorkspaceFolder}/.devcontainer/scripts/init-mise.sh"]
+        // Alternative to the docker-compose network shenanigans to allow commands inside the devcontainer to reach the k3d loadbalancer
+        // "forward-k3d-port": "socat TCP-LISTEN:8080,reuseaddr,fork TCP:host.docker.internal:8080 &"
     },
 
     "postAttachCommand": {

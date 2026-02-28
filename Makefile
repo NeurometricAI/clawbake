@@ -82,6 +82,9 @@ migrate-create:
 migrate-drop:
 	migrate -database "$(DATABASE_URL)" -path db/migrations drop
 
+psql:
+	kubectl exec -it -n clawbake sts/clawbake-postgresql -- psql -U clawbake
+
 ## Docker
 docker-build:
 	docker build -t $(IMG)-server:$(TAG) --build-arg BINARY=server .
@@ -123,7 +126,6 @@ k3d-create:
 	k3d cluster create clawbake \
 		--port "8080:80@loadbalancer" \
 		--port "8443:443@loadbalancer" \
-		--port "5432:30432@server:0" \
 		--agents 2
 
 k3d-delete:

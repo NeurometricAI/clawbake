@@ -4,7 +4,7 @@ This guide covers running Clawbake locally using the devcontainer.
 
 ## Prerequisites
 
-The devcontainer provides all tools via `mise` (Go, kubectl, k3d, Helm, etc). PostgreSQL runs inside the k3d cluster and is accessible from the devcontainer via `host.docker.internal:5432`.
+The devcontainer provides all tools via `mise` (Go, kubectl, k3d, Helm, etc). PostgreSQL runs inside the k3d cluster and is exposed as a NodePort, reachable from the devcontainer via the shared `k3d-clawbake` Docker network.
 
 ## Two Development Modes
 
@@ -50,7 +50,7 @@ make helm-install-local  # Builds and imports images into k3d, deploy operator i
 | 8080 (host) | k3d loadbalancer | host -> k3d cluster ingress (traefik) |
 | 8081 (container) | `make run-server` | devcontainer -> host via VS Code forwarding |
 | 8443 (host) | k3d loadbalancer (TLS) | host -> k3d cluster ingress |
-| 5432 (host) | k3d PostgreSQL (NodePort 30432) | host -> k3d server node, devcontainer reaches via `host.docker.internal` |
+| 30432 (k3d node) | k3d PostgreSQL (NodePort) | devcontainer reaches via Docker DNS (`k3d-clawbake-server-0:30432`), not exposed to host |
 
 The server port is set to 8081 (via `PORT` in `.env.local`) to avoid colliding with k3d's host port 8080.
 
