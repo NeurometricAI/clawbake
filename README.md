@@ -126,4 +126,4 @@ See [`charts/clawbake/values.yaml`](charts/clawbake/values.yaml) for all availab
 
 ## License
 
-Proprietary.
+Apache License 2.0. See [LICENSE](LICENSE) for details.
