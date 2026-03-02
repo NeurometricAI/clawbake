@@ -202,15 +202,17 @@ func (h *Handler) PageInstanceStatus(c echo.Context) error {
 	}
 
 	user := auth.UserFromContext(c.Request().Context())
+	userID, _ := user.ID.Value()
+	uid, _ := userID.(string)
 	if user.Role != "admin" {
-		userID, _ := user.ID.Value()
-		uid, _ := userID.(string)
 		if instance.Spec.UserId != uid {
 			return echo.NewHTTPError(http.StatusNotFound, "instance not found")
 		}
 	}
 
-	return render(c, http.StatusOK, templates.StatusBadge(*instance))
+	isOwner := instance.Spec.UserId == uid
+	detail := strings.Contains(c.Request().Header.Get("HX-Current-URL"), "/ui/instances/")
+	return render(c, http.StatusOK, templates.StatusPollResponse(*instance, h.Config.TtydEnabled, isOwner, detail))
 }
 
 func (h *Handler) PageDeleteInstance(c echo.Context) error {

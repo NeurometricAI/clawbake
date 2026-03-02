@@ -62,24 +62,7 @@ templ InstanceDetail(instance v1alpha1.ClawInstance, isAdmin bool, ttydEnabled b
 					}
 				</tbody>
 			</table>
-			if instance.Status.Phase == "Running" && isOwner {
-				if ttydEnabled {
-					<div class="grid">
-						<a href="/proxy/web/" target="_blank" role="button">
-							Open Web UI
-						</a>
-						<a href="/proxy/tui/" target="_blank" role="button" class="secondary">
-							Open Terminal
-						</a>
-					</div>
-				} else {
-					<p>
-						<a href="/proxy/web/" target="_blank" role="button">
-							Open Web UI
-						</a>
-					</p>
-				}
-			}
+			@InstanceLinksDetail(instance, ttydEnabled, isOwner)
 			if len(instance.Status.Conditions) > 0 {
 				<h3>Conditions</h3>
 				<table>
