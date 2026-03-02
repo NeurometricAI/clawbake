@@ -75,5 +75,7 @@ spec:
                 configMapKeyRef:
                   name: {{ include "clawbake.fullname" . }}
                   key: instance-ttyd-memory-limit
+            - name: SERVER_URL
+              value: "http://{{ include "clawbake.fullname" . }}-server.{{ .Release.Namespace }}.svc.cluster.local"
           resources:
             {{- toYaml .Values.operator.resources | nindent 12 }}

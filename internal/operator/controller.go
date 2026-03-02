@@ -27,6 +27,11 @@ import (
 
 const finalizerName = "clawbake.io/finalizer"
 
+// Notifier sends notifications when instance state changes.
+type Notifier interface {
+	NotifyInstanceReady(ctx context.Context, instanceName, userID string)
+}
+
 // +kubebuilder:rbac:groups=clawbake.io,resources=clawinstances,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=clawbake.io,resources=clawinstances/status,verbs=get;update;patch
 // +kubebuilder:rbac:groups=clawbake.io,resources=clawinstances/finalizers,verbs=update
@@ -41,6 +46,7 @@ type ClawInstanceReconciler struct {
 	client.Client
 	Scheme               *runtime.Scheme
 	Recorder             record.EventRecorder
+	Notifier             Notifier
 	ServerNamespace      string
 	DefaultGatewayConfig string
 	TtydImage            string
@@ -137,6 +143,7 @@ func (r *ClawInstanceReconciler) Reconcile(ctx context.Context, req ctrl.Request
 	instance.Status.Namespace = namespaceName
 
 	if deploy.Status.ReadyReplicas >= 1 {
+		wasRunning := instance.Status.Phase == clawbakev1alpha1.PhaseRunning
 		instance.Status.Phase = clawbakev1alpha1.PhaseRunning
 		meta.SetStatusCondition(&instance.Status.Conditions, metav1.Condition{
 			Type:               "Ready",
@@ -150,6 +157,9 @@ func (r *ClawInstanceReconciler) Reconcile(ctx context.Context, req ctrl.Request
 		}
 		r.Recorder.Event(&instance, corev1.EventTypeNormal, "Reconciled", "All resources reconciled successfully")
 		logger.Info("Successfully reconciled ClawInstance", "userId", instance.Spec.UserId, "namespace", namespaceName)
+		if !wasRunning && r.Notifier != nil {
+			r.Notifier.NotifyInstanceReady(ctx, instance.Name, instance.Spec.UserId)
+		}
 		return ctrl.Result{}, nil
 	}
 

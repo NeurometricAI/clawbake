@@ -20,6 +20,19 @@ import (
 	clawbakev1alpha1 "github.com/clawbake/clawbake/api/v1alpha1"
 )
 
+type mockNotifier struct {
+	calls []mockNotifyCall
+}
+
+type mockNotifyCall struct {
+	InstanceName string
+	UserID       string
+}
+
+func (m *mockNotifier) NotifyInstanceReady(_ context.Context, instanceName, userID string) {
+	m.calls = append(m.calls, mockNotifyCall{InstanceName: instanceName, UserID: userID})
+}
+
 func setupEnvtest(t *testing.T) (client.Client, *envtest.Environment) {
 	t.Helper()
 
@@ -291,10 +304,12 @@ func TestReconcileStartingToRunning(t *testing.T) {
 		t.Fatalf("failed to create ClawInstance: %v", err)
 	}
 
+	notifier := &mockNotifier{}
 	reconciler := &ClawInstanceReconciler{
 		Client:   k8sClient,
 		Scheme:   k8sClient.Scheme(),
 		Recorder: record.NewFakeRecorder(10),
+		Notifier: notifier,
 	}
 
 	req := reconcile.Request{
@@ -357,6 +372,78 @@ func TestReconcileStartingToRunning(t *testing.T) {
 	}
 	if !found {
 		t.Error("expected Ready condition to exist")
+	}
+
+	// Verify notifier was called exactly once with correct args
+	if len(notifier.calls) != 1 {
+		t.Fatalf("expected 1 notification call, got %d", len(notifier.calls))
+	}
+	if notifier.calls[0].InstanceName != "test-instance" {
+		t.Errorf("expected instanceName 'test-instance', got %q", notifier.calls[0].InstanceName)
+	}
+	if notifier.calls[0].UserID != "testuser" {
+		t.Errorf("expected userID 'testuser', got %q", notifier.calls[0].UserID)
+	}
+}
+
+func TestReconcileRunningNoDuplicateNotification(t *testing.T) {
+	k8sClient, _ := setupEnvtest(t)
+	ctx := context.Background()
+
+	instance := newTestInstance()
+	instance.Name = "test-running-dup"
+	if err := k8sClient.Create(ctx, instance); err != nil {
+		t.Fatalf("failed to create ClawInstance: %v", err)
+	}
+
+	notifier := &mockNotifier{}
+	reconciler := &ClawInstanceReconciler{
+		Client:   k8sClient,
+		Scheme:   k8sClient.Scheme(),
+		Recorder: record.NewFakeRecorder(10),
+		Notifier: notifier,
+	}
+
+	req := reconcile.Request{
+		NamespacedName: types.NamespacedName{
+			Name:      instance.Name,
+			Namespace: instance.Namespace,
+		},
+	}
+
+	// Reconcile to create resources (finalizer + resources)
+	if _, err := reconciler.Reconcile(ctx, req); err != nil {
+		t.Fatalf("first reconcile failed: %v", err)
+	}
+	if _, err := reconciler.Reconcile(ctx, req); err != nil {
+		t.Fatalf("second reconcile failed: %v", err)
+	}
+
+	// Simulate deployment becoming ready
+	deploy := &appsv1.Deployment{}
+	if err := k8sClient.Get(ctx, types.NamespacedName{Name: "openclaw", Namespace: "clawbake-test-running-dup"}, deploy); err != nil {
+		t.Fatalf("failed to get deployment: %v", err)
+	}
+	deploy.Status.ReadyReplicas = 1
+	deploy.Status.Replicas = 1
+	if err := k8sClient.Status().Update(ctx, deploy); err != nil {
+		t.Fatalf("failed to update deployment status: %v", err)
+	}
+
+	// First reconcile transitions to Running — should notify
+	if _, err := reconciler.Reconcile(ctx, req); err != nil {
+		t.Fatalf("reconcile failed: %v", err)
+	}
+	if len(notifier.calls) != 1 {
+		t.Fatalf("expected 1 notification after first Running reconcile, got %d", len(notifier.calls))
+	}
+
+	// Second reconcile — already Running, should NOT notify again
+	if _, err := reconciler.Reconcile(ctx, req); err != nil {
+		t.Fatalf("reconcile failed: %v", err)
+	}
+	if len(notifier.calls) != 1 {
+		t.Errorf("expected still 1 notification after re-reconcile, got %d", len(notifier.calls))
 	}
 }
 

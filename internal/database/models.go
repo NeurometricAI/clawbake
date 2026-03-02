@@ -29,4 +29,5 @@ type User struct {
 	OidcSubject string             `json:"oidc_subject"`
 	CreatedAt   pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt   pgtype.Timestamptz `json:"updated_at"`
+	SlackUserID pgtype.Text        `json:"slack_user_id"`
 }

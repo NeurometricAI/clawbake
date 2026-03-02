@@ -11,6 +11,7 @@ import (
 func (h *Handler) RegisterRoutes(e *echo.Echo) {
 	// Public
 	e.GET("/healthz", h.HealthCheck)
+	e.POST("/internal/notifications/instance-ready", h.NotifyInstanceReady)
 	e.Static("/static", "web/static")
 
 	// Slack bot (no auth middleware — uses Slack signature verification)

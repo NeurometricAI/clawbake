@@ -93,6 +93,11 @@ func main() {
 		TtydCommand:          ttydCommand,
 		TtydResources:        ttydResources,
 	}
+
+	if serverURL := os.Getenv("SERVER_URL"); serverURL != "" {
+		reconciler.Notifier = operator.NewHTTPNotifier(serverURL)
+		logger.Info("instance-ready notifications enabled", "serverURL", serverURL)
+	}
 	if err := reconciler.SetupWithManager(mgr); err != nil {
 		logger.Error(err, "unable to create controller", "controller", "ClawInstance")
 		os.Exit(1)

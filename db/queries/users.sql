@@ -1,6 +1,6 @@
 -- name: CreateUser :one
-INSERT INTO users (email, name, picture, role, oidc_subject)
-VALUES ($1, $2, $3, $4, $5)
+INSERT INTO users (email, name, picture, role, oidc_subject, slack_user_id)
+VALUES ($1, $2, $3, $4, $5, $6)
 RETURNING *;
 
 -- name: GetUserByID :one
@@ -22,6 +22,7 @@ UPDATE users SET
     picture = COALESCE(sqlc.narg('picture'), picture),
     role = COALESCE(sqlc.narg('role'), role),
     oidc_subject = COALESCE(sqlc.narg('oidc_subject'), oidc_subject),
+    slack_user_id = COALESCE(sqlc.narg('slack_user_id'), slack_user_id),
     updated_at = now()
 WHERE id = $1
 RETURNING *;

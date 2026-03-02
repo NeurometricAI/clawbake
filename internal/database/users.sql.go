@@ -12,9 +12,9 @@ import (
 )
 
 const createUser = `-- name: CreateUser :one
-INSERT INTO users (email, name, picture, role, oidc_subject)
-VALUES ($1, $2, $3, $4, $5)
-RETURNING id, email, name, picture, role, oidc_subject, created_at, updated_at
+INSERT INTO users (email, name, picture, role, oidc_subject, slack_user_id)
+VALUES ($1, $2, $3, $4, $5, $6)
+RETURNING id, email, name, picture, role, oidc_subject, created_at, updated_at, slack_user_id
 `
 
 type CreateUserParams struct {
@@ -23,6 +23,7 @@ type CreateUserParams struct {
 	Picture     pgtype.Text `json:"picture"`
 	Role        string      `json:"role"`
 	OidcSubject string      `json:"oidc_subject"`
+	SlackUserID pgtype.Text `json:"slack_user_id"`
 }
 
 func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, error) {
@@ -32,6 +33,7 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, e
 		arg.Picture,
 		arg.Role,
 		arg.OidcSubject,
+		arg.SlackUserID,
 	)
 	var i User
 	err := row.Scan(
@@ -43,6 +45,7 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, e
 		&i.OidcSubject,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.SlackUserID,
 	)
 	return i, err
 }
@@ -57,7 +60,7 @@ func (q *Queries) DeleteUser(ctx context.Context, id pgtype.UUID) error {
 }
 
 const getUserByEmail = `-- name: GetUserByEmail :one
-SELECT id, email, name, picture, role, oidc_subject, created_at, updated_at FROM users WHERE email = $1
+SELECT id, email, name, picture, role, oidc_subject, created_at, updated_at, slack_user_id FROM users WHERE email = $1
 `
 
 func (q *Queries) GetUserByEmail(ctx context.Context, email string) (User, error) {
@@ -72,12 +75,13 @@ func (q *Queries) GetUserByEmail(ctx context.Context, email string) (User, error
 		&i.OidcSubject,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.SlackUserID,
 	)
 	return i, err
 }
 
 const getUserByID = `-- name: GetUserByID :one
-SELECT id, email, name, picture, role, oidc_subject, created_at, updated_at FROM users WHERE id = $1
+SELECT id, email, name, picture, role, oidc_subject, created_at, updated_at, slack_user_id FROM users WHERE id = $1
 `
 
 func (q *Queries) GetUserByID(ctx context.Context, id pgtype.UUID) (User, error) {
@@ -92,12 +96,13 @@ func (q *Queries) GetUserByID(ctx context.Context, id pgtype.UUID) (User, error)
 		&i.OidcSubject,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.SlackUserID,
 	)
 	return i, err
 }
 
 const getUserByOIDCSubject = `-- name: GetUserByOIDCSubject :one
-SELECT id, email, name, picture, role, oidc_subject, created_at, updated_at FROM users WHERE oidc_subject = $1
+SELECT id, email, name, picture, role, oidc_subject, created_at, updated_at, slack_user_id FROM users WHERE oidc_subject = $1
 `
 
 func (q *Queries) GetUserByOIDCSubject(ctx context.Context, oidcSubject string) (User, error) {
@@ -112,12 +117,13 @@ func (q *Queries) GetUserByOIDCSubject(ctx context.Context, oidcSubject string) 
 		&i.OidcSubject,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.SlackUserID,
 	)
 	return i, err
 }
 
 const listUsers = `-- name: ListUsers :many
-SELECT id, email, name, picture, role, oidc_subject, created_at, updated_at FROM users ORDER BY created_at DESC
+SELECT id, email, name, picture, role, oidc_subject, created_at, updated_at, slack_user_id FROM users ORDER BY created_at DESC
 `
 
 func (q *Queries) ListUsers(ctx context.Context) ([]User, error) {
@@ -138,6 +144,7 @@ func (q *Queries) ListUsers(ctx context.Context) ([]User, error) {
 			&i.OidcSubject,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.SlackUserID,
 		); err != nil {
 			return nil, err
 		}
@@ -156,9 +163,10 @@ UPDATE users SET
     picture = COALESCE($4, picture),
     role = COALESCE($5, role),
     oidc_subject = COALESCE($6, oidc_subject),
+    slack_user_id = COALESCE($7, slack_user_id),
     updated_at = now()
 WHERE id = $1
-RETURNING id, email, name, picture, role, oidc_subject, created_at, updated_at
+RETURNING id, email, name, picture, role, oidc_subject, created_at, updated_at, slack_user_id
 `
 
 type UpdateUserParams struct {
@@ -168,6 +176,7 @@ type UpdateUserParams struct {
 	Picture     pgtype.Text `json:"picture"`
 	Role        pgtype.Text `json:"role"`
 	OidcSubject pgtype.Text `json:"oidc_subject"`
+	SlackUserID pgtype.Text `json:"slack_user_id"`
 }
 
 func (q *Queries) UpdateUser(ctx context.Context, arg UpdateUserParams) (User, error) {
@@ -178,6 +187,7 @@ func (q *Queries) UpdateUser(ctx context.Context, arg UpdateUserParams) (User, e
 		arg.Picture,
 		arg.Role,
 		arg.OidcSubject,
+		arg.SlackUserID,
 	)
 	var i User
 	err := row.Scan(
@@ -189,6 +199,7 @@ func (q *Queries) UpdateUser(ctx context.Context, arg UpdateUserParams) (User, e
 		&i.OidcSubject,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.SlackUserID,
 	)
 	return i, err
 }

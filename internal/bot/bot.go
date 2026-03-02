@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/slack-go/slack"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -61,6 +62,12 @@ func (b *Bot) resolveUser(ctx context.Context, slackUserID string) (database.Use
 
 	user, err := b.db.GetUserByEmail(ctx, email)
 	if err == nil {
+		if !user.SlackUserID.Valid {
+			user, _ = b.db.UpdateUser(ctx, database.UpdateUserParams{
+				ID:          user.ID,
+				SlackUserID: pgtype.Text{String: slackUserID, Valid: true},
+			})
+		}
 		return user, nil
 	}
 
@@ -69,6 +76,7 @@ func (b *Bot) resolveUser(ctx context.Context, slackUserID string) (database.Use
 		Name:        slackUser.Profile.RealName,
 		Role:        "user",
 		OidcSubject: fmt.Sprintf("slack:%s", slackUserID),
+		SlackUserID: pgtype.Text{String: slackUserID, Valid: true},
 	})
 }
 
@@ -146,6 +154,36 @@ func (b *Bot) forwardToInstance(ctx context.Context, instance *clawbakev1alpha1.
 		return result.Choices[0].Message.Content, nil
 	}
 	return string(body), nil
+}
+
+// NotifyInstanceReady sends a Slack DM to the user when their instance becomes ready.
+// It's a no-op for non-Slack users or if the user can't be found.
+func (b *Bot) NotifyInstanceReady(ctx context.Context, instanceName, userID string) {
+	parsedID, err := uuid.Parse(userID)
+	if err != nil {
+		return
+	}
+
+	user, err := b.db.GetUserByID(ctx, pgtype.UUID{Bytes: parsedID, Valid: true})
+	if err != nil {
+		return
+	}
+
+	if !user.SlackUserID.Valid {
+		return
+	}
+	slackUserID := user.SlackUserID.String
+
+	msg := fmt.Sprintf(
+		"Your openclaw instance *%s* is now running! :tada:\n\n"+
+			"You can interact with it by:\n"+
+			"- Sending me a DM with your message\n"+
+			"- @mentioning me in a channel\n"+
+			"- Using the web UI at %s",
+		instanceName, b.baseURL,
+	)
+
+	_, _, _ = b.slack.PostMessageContext(ctx, slackUserID, slack.MsgOptionText(msg, false))
 }
 
 func formatUUID(b [16]byte) string {
