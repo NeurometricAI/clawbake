@@ -24,6 +24,8 @@ import (
 	"github.com/clawbake/clawbake/internal/database"
 	"github.com/clawbake/clawbake/internal/handler"
 	"github.com/clawbake/clawbake/internal/k8s"
+	"github.com/clawbake/clawbake/internal/version"
+	"github.com/clawbake/clawbake/web/templates"
 )
 
 func runMigrations(databaseURL string) error {
@@ -103,6 +105,8 @@ func main() {
 	flag.Parse()
 
 	cfg := config.Load()
+	templates.AppVersion = version.Version
+	log.Printf("clawbake server %s", version.Version)
 
 	if *migrateFlag {
 		log.Println("running database migrations...")

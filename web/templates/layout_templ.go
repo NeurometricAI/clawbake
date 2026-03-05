@@ -8,6 +8,9 @@ package templates
 import "github.com/a-h/templ"
 import templruntime "github.com/a-h/templ/runtime"
 
+// AppVersion is set at startup from the compiled-in version.
+var AppVersion = "dev"
+
 func Layout(title string, isAdmin bool) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
@@ -36,23 +39,36 @@ func Layout(title string, isAdmin bool) templ.Component {
 		var templ_7745c5c3_Var2 string
 		templ_7745c5c3_Var2, templ_7745c5c3_Err = templ.JoinStringErrs(title)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/layout.templ`, Line: 9, Col: 17}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/layout.templ`, Line: 12, Col: 17}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var2))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, " - Clawbake</title><link rel=\"stylesheet\" href=\"https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css\"><link rel=\"stylesheet\" href=\"/static/app.css\"><script src=\"https://unpkg.com/htmx.org@2.0.4\"></script></head><body><nav class=\"container\"><ul><li><strong><a href=\"/\" class=\"contrast\">Clawbake</a></strong></li></ul><ul><li><a href=\"/\">Dashboard</a></li>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, " - Clawbake</title><link rel=\"stylesheet\" href=\"https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css\"><link rel=\"stylesheet\" href=\"/static/app.css\"><script src=\"https://unpkg.com/htmx.org@2.0.4\"></script></head><body><nav class=\"container\"><ul><li><strong><a href=\"/\" class=\"contrast\">Clawbake</a></strong> <small class=\"muted\">(")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		var templ_7745c5c3_Var3 string
+		templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.JoinStringErrs(AppVersion)
+		if templ_7745c5c3_Err != nil {
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/layout.templ`, Line: 20, Col: 102}
+		}
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var3))
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, ")</small></li></ul><ul><li><a href=\"/\">Dashboard</a></li>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		if isAdmin {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "<li><a href=\"/ui/admin/users\">Users</a></li><li><a href=\"/ui/admin/defaults\">Defaults</a></li>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 4, "<li><a href=\"/ui/admin/users\">Users</a></li><li><a href=\"/ui/admin/defaults\">Defaults</a></li>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 4, "<li><a href=\"/auth/logout\">Logout</a></li></ul></nav><main class=\"container\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, "<li><a href=\"/auth/logout\">Logout</a></li></ul></nav><main class=\"container\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -60,7 +76,7 @@ func Layout(title string, isAdmin bool) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, "</main><script>\n\t\t\t\tdocument.body.addEventListener('htmx:responseError', function(e) {\n\t\t\t\t\tif (e.detail.xhr.status === 401) window.location = '/';\n\t\t\t\t});\n\t\t\t\tdocument.body.addEventListener('instanceCreated', function() {\n\t\t\t\t\tdocument.getElementById('create-form').innerHTML = '';\n\t\t\t\t\tvar empty = document.getElementById('empty-message');\n\t\t\t\t\tif (empty) empty.remove();\n\t\t\t\t});\n\t\t\t</script></body></html>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 6, "</main><script>\n\t\t\t\tdocument.body.addEventListener('htmx:responseError', function(e) {\n\t\t\t\t\tif (e.detail.xhr.status === 401) window.location = '/';\n\t\t\t\t});\n\t\t\t\tdocument.body.addEventListener('instanceCreated', function() {\n\t\t\t\t\tdocument.getElementById('create-form').innerHTML = '';\n\t\t\t\t\tvar empty = document.getElementById('empty-message');\n\t\t\t\t\tif (empty) empty.remove();\n\t\t\t\t});\n\t\t\t</script></body></html>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

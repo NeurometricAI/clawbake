@@ -15,6 +15,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	clawbakev1alpha1 "github.com/clawbake/clawbake/api/v1alpha1"
+	"github.com/clawbake/clawbake/internal/version"
 	"github.com/clawbake/clawbake/internal/database"
 	"github.com/clawbake/clawbake/internal/jsonutil"
 )
@@ -297,7 +298,7 @@ func (b *Bot) handleHelp(ctx context.Context, c echo.Context, cmdName string) er
 	name := strings.TrimPrefix(cmdName, "/")
 	title := strings.ToUpper(name[:1]) + name[1:]
 
-	help := fmt.Sprintf("*%s Bot*\n", title) +
+	help := fmt.Sprintf("*%s Bot* (%s)\n", title, version.Version) +
 		fmt.Sprintf("Manage your openclaw instance from Slack.\n\n") +
 		fmt.Sprintf("*Slash Commands*\n") +
 		createUsage + "\n" +

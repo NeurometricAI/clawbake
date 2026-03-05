@@ -16,6 +16,7 @@ import (
 
 	clawbakev1alpha1 "github.com/clawbake/clawbake/api/v1alpha1"
 	"github.com/clawbake/clawbake/internal/operator"
+	"github.com/clawbake/clawbake/internal/version"
 )
 
 var scheme = runtime.NewScheme()
@@ -123,7 +124,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	logger.Info("starting manager")
+	logger.Info("starting manager", "version", version.Version)
 	if err := mgr.Start(ctrl.SetupSignalHandler()); err != nil {
 		logger.Error(err, "problem running manager")
 		os.Exit(1)

@@ -1,5 +1,8 @@
 package templates
 
+// AppVersion is set at startup from the compiled-in version.
+var AppVersion = "dev"
+
 templ Layout(title string, isAdmin bool) {
 	<!DOCTYPE html>
 	<html lang="en" data-theme="light">
@@ -14,7 +17,7 @@ templ Layout(title string, isAdmin bool) {
 		<body>
 			<nav class="container">
 				<ul>
-					<li><strong><a href="/" class="contrast">Clawbake</a></strong></li>
+					<li><strong><a href="/" class="contrast">Clawbake</a></strong> <small class="muted">({ AppVersion })</small></li>
 				</ul>
 				<ul>
 					<li><a href="/">Dashboard</a></li>

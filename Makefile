@@ -15,26 +15,30 @@ ifndef TAG
 TAG := dev-$(shell date +%s)
 endif
 
+# Version (set via git tag, fallback to dev)
+VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo dev)
+LDFLAGS := -X github.com/clawbake/clawbake/internal/version.Version=$(VERSION)
+
 all: generate build test
 
 ## Build
 build: build-server build-operator
 
 build-server:
-	go build -o bin/server ./cmd/server
+	go build -ldflags "$(LDFLAGS)" -o bin/server ./cmd/server
 
 build-operator:
-	go build -o bin/operator ./cmd/operator
+	go build -ldflags "$(LDFLAGS)" -o bin/operator ./cmd/operator
 
 ## Run
 DOTENV := $(or $(wildcard .env.local), $(wildcard .env.example))
 
 run-server:
 	@echo "Using environment from $(DOTENV)"
-	set -a && [ -f "$(DOTENV)" ] && . ./$(DOTENV); go run ./cmd/server
+	set -a && [ -f "$(DOTENV)" ] && . ./$(DOTENV); go run -ldflags "$(LDFLAGS)" ./cmd/server
 
 run-operator:
-	go run ./cmd/operator
+	go run -ldflags "$(LDFLAGS)" ./cmd/operator
 
 ## Test
 test:
@@ -87,8 +91,8 @@ psql:
 
 ## Docker
 docker-build:
-	docker build -t $(IMG)-server:$(TAG) --build-arg BINARY=server .
-	docker build -t $(IMG)-operator:$(TAG) --build-arg BINARY=operator .
+	docker build -t $(IMG)-server:$(TAG) --build-arg BINARY=server --build-arg VERSION=$(VERSION) .
+	docker build -t $(IMG)-operator:$(TAG) --build-arg BINARY=operator --build-arg VERSION=$(VERSION) .
 
 k3d-import: docker-build
 	k3d image import $(IMG)-server:$(TAG) $(IMG)-operator:$(TAG) --cluster clawbake
