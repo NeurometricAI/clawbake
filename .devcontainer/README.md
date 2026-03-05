@@ -18,10 +18,23 @@ Open this project in VS Code with the Dev Containers extension installed. VS Cod
 
 - **devcontainer.json**: Main configuration file
 - **Dockerfile**: Container image definition
-- **docker-compose.yml**: Service definitions
-- **scripts/**: Lifecycle hook scripts for custom commands
-- **config/**: Configuration templates (e.g., AWS CLI)
+- **docker-compose.yml**: Service definitions and env_file loading
+- **commands-project.d/**: Committed lifecycle scripts that travel with the project (e.g., mise init)
+- **commands.d/**: User-specific lifecycle scripts, gitignored, populated from `~/.config/devcontainer/` during init
+- **scripts/**: Core lifecycle hook runner and utilities
+- **config/**: Tool configuration (e.g., mise-global.toml)
 
 ## Environment Variables
 
-Set project-specific environment variables in `.devcontainer/.env` (create if needed). The Anthropic API key is automatically extracted from macOS Keychain during initialization.
+Two mechanisms provide env vars to the container:
+
+- **`.devcontainer/.env`** — Auto-loaded by docker compose for `${VAR}` interpolation in compose files. Auto-generated during init (e.g., API keys from macOS Keychain). Git-ignored.
+- **`env_file`** entries in docker-compose.yml load vars into the container runtime:
+  1. `.env.example` — Checked in, non-sensitive defaults
+  2. `.env` — Git-ignored, local overrides. Module env vars are merged here at install time.
+
+## Lifecycle Hooks
+
+Scripts run via `custom-commands.sh` at devcontainer lifecycle points. Project scripts (`commands-project.d/`) run before user scripts (`commands.d/`).
+
+Digit-prefixed scripts (`0-init-mise.sh`) run sequentially in order. Non-digit-prefixed scripts run in parallel.

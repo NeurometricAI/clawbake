@@ -7,8 +7,7 @@
 
 set -euo pipefail
 
-devcontainer_dir=$(cd $(dirname $0)/..; pwd)
-env_file="${devcontainer_dir}/.env"
+env_file="${DEVCONTAINER_DIR}/.env"
 
 if test -x /usr/bin/security && (! test -f ${env_file} || ! grep -q ANTHROPIC_API_KEY ${env_file}); then
     echo "Extracting anthropic key from macos keychain"

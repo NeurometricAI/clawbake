@@ -1,6 +1,7 @@
 {
     "dockerComposeFile": [
-        "docker-compose.yml"
+        "docker-compose.yml",
+        "docker-compose-claude-code.yml",
     ],
 
     "service": "devcontainer",
@@ -17,15 +18,10 @@
 
     "initializeCommand": {
         "custom-commands": ["/bin/bash", "./.devcontainer/scripts/custom-commands.sh", "init"],
-        // On macos, extracts host anthropic key from Keychain and places in .devcontainer/.env for use by docker-compose.yml, and thus being set in environment
-        "extract-anthropic-key": ["/bin/bash", "./.devcontainer/scripts/extract-anthropic-key.sh"]
     },
 
     "postCreateCommand": {
-		"init-claude-json": "cp ~/.claude.json.host ~/.claude.json",
-        "init-aws-cli": "mkdir -p ~/.aws && cat ${containerWorkspaceFolder}/.devcontainer/config/aws-cli-config.ini | envsubst > ~/.aws/config",
-        "custom-commands": ["/bin/bash", "${containerWorkspaceFolder}/.devcontainer/scripts/custom-commands.sh", "run", "postCreateCommand"],
-        "init-mise": ["/bin/bash", "${containerWorkspaceFolder}/.devcontainer/scripts/init-mise.sh"]
+        "custom-commands": ["/bin/bash", "${containerWorkspaceFolder}/.devcontainer/scripts/custom-commands.sh", "run", "postCreateCommand"]
         // Alternative to the docker-compose network shenanigans to allow commands inside the devcontainer to reach the k3d loadbalancer
         // "forward-k3d-port": "socat TCP-LISTEN:8080,reuseaddr,fork TCP:host.docker.internal:8080 &"
     },
@@ -36,12 +32,7 @@
 
     "mounts": [
         // Gives the docker inside the devcontainer access to the host docker
-        "source=/var/run/docker.sock,target=/var/run/docker.sock,type=bind",
-        // Link user's claude config into this project for consistency across projects
-        "source=${localEnv:HOME}/.claude,target=/home/vscode/.claude,type=bind",
-        // We need a ~/.claude.json to avoid having to login within container,
-        // but it gets corrupted, so mount and make a copy on create above
-	    "source=${localEnv:HOME}/.claude.json,target=/home/vscode/.claude.json.host,type=bind"
+        "source=/var/run/docker.sock,target=/var/run/docker.sock,type=bind"
     ],
 
     // Only forward 8081 (direct server). Port 8080 is handled by k3d's Docker
