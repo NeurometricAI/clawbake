@@ -19,10 +19,12 @@ import (
 )
 
 const (
-	proxyPrefixWeb = "/proxy/web"
-	proxyPrefixTUI = "/proxy/tui"
-	portWeb        = 18789
-	portTUI        = 7681
+	proxyPrefixWeb   = "/proxy/web"
+	proxyPrefixTUI   = "/proxy/tui"
+	proxyPrefixShell = "/proxy/shell"
+	portWeb          = 18789
+	portTUI          = 7681
+	portShell        = 7682
 )
 
 type proxyRoute struct {
@@ -32,6 +34,9 @@ type proxyRoute struct {
 
 // classifyProxyPath determines backend port and route prefix from the request path.
 func classifyProxyPath(path string) proxyRoute {
+	if strings.HasPrefix(path, proxyPrefixShell) {
+		return proxyRoute{port: portShell, prefix: proxyPrefixShell}
+	}
 	if strings.HasPrefix(path, proxyPrefixTUI) {
 		return proxyRoute{port: portTUI, prefix: proxyPrefixTUI}
 	}

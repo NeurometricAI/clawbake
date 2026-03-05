@@ -78,7 +78,7 @@ func (h *Handler) PageDashboard(c echo.Context) error {
 	}
 	placeholders := jsonutil.ExtractPlaceholders(defaults.GatewayConfig)
 
-	return render(c, http.StatusOK, templates.Dashboard(instances, user.Role == "admin", hasInstance, userNames, placeholders, h.Config.TtydEnabled, uid))
+	return render(c, http.StatusOK, templates.Dashboard(instances, user.Role == "admin", hasInstance, userNames, placeholders, h.Config.TUIEnabled, h.Config.ShellEnabled, uid))
 }
 
 func (h *Handler) PageCreateInstance(c echo.Context) error {
@@ -190,7 +190,7 @@ func (h *Handler) PageInstanceDetail(c echo.Context) error {
 		}
 	}
 
-	return render(c, http.StatusOK, templates.InstanceDetail(*instance, user.Role == "admin", h.Config.TtydEnabled, instance.Spec.UserId == uid))
+	return render(c, http.StatusOK, templates.InstanceDetail(*instance, user.Role == "admin", h.Config.TUIEnabled, h.Config.ShellEnabled, instance.Spec.UserId == uid))
 }
 
 func (h *Handler) PageInstanceStatus(c echo.Context) error {
@@ -212,7 +212,7 @@ func (h *Handler) PageInstanceStatus(c echo.Context) error {
 
 	isOwner := instance.Spec.UserId == uid
 	detail := strings.Contains(c.Request().Header.Get("HX-Current-URL"), "/ui/instances/")
-	return render(c, http.StatusOK, templates.StatusPollResponse(*instance, h.Config.TtydEnabled, isOwner, detail))
+	return render(c, http.StatusOK, templates.StatusPollResponse(*instance, h.Config.TUIEnabled, h.Config.ShellEnabled, isOwner, detail))
 }
 
 func (h *Handler) PageDeleteInstance(c echo.Context) error {

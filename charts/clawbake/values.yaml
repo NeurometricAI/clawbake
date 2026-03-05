@@ -89,9 +89,11 @@ instanceDefaults:
   ttyd:
     enabled: true
     image: tsl0922/ttyd:alpine
-    port: 7681
-    command: "/ttyd-bin/ttyd -W -p 7681 node /app/openclaw.mjs tui --token $OPENCLAW_GATEWAY_TOKEN"
-    cpuRequest: 50m
-    memoryRequest: 64Mi
-    cpuLimit: 200m
-    memoryLimit: 256Mi
+    tui:
+      enabled: true
+      port: 7681
+      command: "/ttyd-bin/ttyd -W -p 7681 node /app/openclaw.mjs tui --token $OPENCLAW_GATEWAY_TOKEN"
+    shell:
+      enabled: true
+      port: 7682
+      command: "/ttyd-bin/ttyd -W -p 7682 /bin/bash"

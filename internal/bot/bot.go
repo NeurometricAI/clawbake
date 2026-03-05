@@ -32,11 +32,12 @@ type Bot struct {
 	k8sClient     client.Client
 	namespace     string
 	baseURL       string
-	ttydEnabled   bool
+	tuiEnabled    bool
+	shellEnabled  bool
 }
 
 // New creates a Bot with the given configuration.
-func New(botToken, signingSecret string, db *database.Queries, k8sClient client.Client, namespace, baseURL string, ttydEnabled bool) *Bot {
+func New(botToken, signingSecret string, db *database.Queries, k8sClient client.Client, namespace, baseURL string, tuiEnabled, shellEnabled bool) *Bot {
 	return &Bot{
 		slack:         slack.New(botToken),
 		signingSecret: signingSecret,
@@ -44,7 +45,8 @@ func New(botToken, signingSecret string, db *database.Queries, k8sClient client.
 		k8sClient:     k8sClient,
 		namespace:     namespace,
 		baseURL:       baseURL,
-		ttydEnabled:   ttydEnabled,
+		tuiEnabled:    tuiEnabled,
+		shellEnabled:  shellEnabled,
 	}
 }
 

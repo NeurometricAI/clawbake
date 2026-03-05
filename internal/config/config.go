@@ -23,7 +23,8 @@ type Config struct {
 	InstanceDefaultStorageSize   string
 	InstanceDefaultGatewayConfig string
 
-	TtydEnabled bool
+	TUIEnabled   bool
+	ShellEnabled bool
 }
 
 func Load() *Config {
@@ -48,7 +49,8 @@ func Load() *Config {
 		InstanceDefaultStorageSize:   os.Getenv("INSTANCE_DEFAULT_STORAGE_SIZE"),
 		InstanceDefaultGatewayConfig: os.Getenv("INSTANCE_DEFAULT_GATEWAY_CONFIG"),
 
-		TtydEnabled: os.Getenv("TTYD_ENABLED") != "false",
+		TUIEnabled:   os.Getenv("TUI_ENABLED") != "false",
+		ShellEnabled: os.Getenv("SHELL_ENABLED") != "false",
 	}
 }
 

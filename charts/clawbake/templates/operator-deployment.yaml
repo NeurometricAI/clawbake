@@ -45,36 +45,36 @@ spec:
                 configMapKeyRef:
                   name: {{ include "clawbake.fullname" . }}
                   key: instance-ttyd-image
-            - name: INSTANCE_TTYD_PORT
+            - name: INSTANCE_TUI_ENABLED
               valueFrom:
                 configMapKeyRef:
                   name: {{ include "clawbake.fullname" . }}
-                  key: instance-ttyd-port
-            - name: INSTANCE_TTYD_COMMAND
+                  key: instance-tui-enabled
+            - name: INSTANCE_TUI_PORT
               valueFrom:
                 configMapKeyRef:
                   name: {{ include "clawbake.fullname" . }}
-                  key: instance-ttyd-command
-            - name: INSTANCE_TTYD_CPU_REQUEST
+                  key: instance-tui-port
+            - name: INSTANCE_TUI_COMMAND
               valueFrom:
                 configMapKeyRef:
                   name: {{ include "clawbake.fullname" . }}
-                  key: instance-ttyd-cpu-request
-            - name: INSTANCE_TTYD_MEMORY_REQUEST
+                  key: instance-tui-command
+            - name: INSTANCE_SHELL_ENABLED
               valueFrom:
                 configMapKeyRef:
                   name: {{ include "clawbake.fullname" . }}
-                  key: instance-ttyd-memory-request
-            - name: INSTANCE_TTYD_CPU_LIMIT
+                  key: instance-shell-enabled
+            - name: INSTANCE_SHELL_PORT
               valueFrom:
                 configMapKeyRef:
                   name: {{ include "clawbake.fullname" . }}
-                  key: instance-ttyd-cpu-limit
-            - name: INSTANCE_TTYD_MEMORY_LIMIT
+                  key: instance-shell-port
+            - name: INSTANCE_SHELL_COMMAND
               valueFrom:
                 configMapKeyRef:
                   name: {{ include "clawbake.fullname" . }}
-                  key: instance-ttyd-memory-limit
+                  key: instance-shell-command
             - name: SERVER_URL
               value: "http://{{ include "clawbake.fullname" . }}-server.{{ .Release.Namespace }}.svc.cluster.local"
           resources:

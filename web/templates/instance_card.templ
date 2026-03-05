@@ -2,9 +2,9 @@ package templates
 
 import v1alpha1 "github.com/clawbake/clawbake/api/v1alpha1"
 
-templ InstanceCreated(instance v1alpha1.ClawInstance, ttydEnabled bool, currentUserID string) {
+templ InstanceCreated(instance v1alpha1.ClawInstance, tuiEnabled bool, shellEnabled bool, currentUserID string) {
 	<div id="instance-list" hx-swap-oob="innerHTML">
-		@InstanceCard(instance, nil, ttydEnabled, currentUserID)
+		@InstanceCard(instance, nil, tuiEnabled, shellEnabled, currentUserID)
 	</div>
 	<span id="new-instance-btn" hx-swap-oob="innerHTML"></span>
 }
@@ -21,31 +21,42 @@ templ StatusBadge(instance v1alpha1.ClawInstance) {
 	>{ displayPhase(instance.Status.Phase) }</span>
 }
 
-templ InstanceLinks(instance v1alpha1.ClawInstance, ttydEnabled bool, isOwner bool) {
+templ InstanceLinks(instance v1alpha1.ClawInstance, tuiEnabled bool, shellEnabled bool, isOwner bool) {
 	<div id={ "links-" + instance.Name }>
 		if instance.Status.Phase == "Running" && isOwner {
 			<p>
 				<a href="/proxy/web/" target="_blank">Web UI</a>
-				if ttydEnabled {
+				if tuiEnabled {
 					&nbsp;|&nbsp;
-					<a href="/proxy/tui/" target="_blank">Terminal</a>
+					<a href="/proxy/tui/" target="_blank">Text UI</a>
+				}
+				if shellEnabled {
+					&nbsp;|&nbsp;
+					<a href="/proxy/shell/" target="_blank">Shell</a>
 				}
 			</p>
 		}
 	</div>
 }
 
-templ InstanceLinksDetail(instance v1alpha1.ClawInstance, ttydEnabled bool, isOwner bool) {
+templ InstanceLinksDetail(instance v1alpha1.ClawInstance, tuiEnabled bool, shellEnabled bool, isOwner bool) {
 	<div id={ "links-" + instance.Name }>
 		if instance.Status.Phase == "Running" && isOwner {
-			if ttydEnabled {
+			if tuiEnabled || shellEnabled {
 				<div class="grid">
 					<a href="/proxy/web/" target="_blank" role="button">
 						Open Web UI
 					</a>
-					<a href="/proxy/tui/" target="_blank" role="button" class="secondary">
-						Open Terminal
-					</a>
+					if tuiEnabled {
+						<a href="/proxy/tui/" target="_blank" role="button" class="secondary">
+							Open Text UI
+						</a>
+					}
+					if shellEnabled {
+						<a href="/proxy/shell/" target="_blank" role="button" class="secondary">
+							Open Shell
+						</a>
+					}
 				</div>
 			} else {
 				<p>
@@ -58,39 +69,50 @@ templ InstanceLinksDetail(instance v1alpha1.ClawInstance, ttydEnabled bool, isOw
 	</div>
 }
 
-templ StatusPollResponse(instance v1alpha1.ClawInstance, ttydEnabled bool, isOwner bool, detail bool) {
+templ StatusPollResponse(instance v1alpha1.ClawInstance, tuiEnabled bool, shellEnabled bool, isOwner bool, detail bool) {
 	@StatusBadge(instance)
 	if instance.Status.Phase == "Running" && isOwner {
 		if detail {
-			@instanceLinksDetailOOB(instance, ttydEnabled)
+			@instanceLinksDetailOOB(instance, tuiEnabled, shellEnabled)
 		} else {
-			@instanceLinksOOB(instance, ttydEnabled)
+			@instanceLinksOOB(instance, tuiEnabled, shellEnabled)
 		}
 	}
 }
 
-templ instanceLinksOOB(instance v1alpha1.ClawInstance, ttydEnabled bool) {
+templ instanceLinksOOB(instance v1alpha1.ClawInstance, tuiEnabled bool, shellEnabled bool) {
 	<div id={ "links-" + instance.Name } hx-swap-oob="true">
 		<p>
 			<a href="/proxy/web/" target="_blank">Web UI</a>
-			if ttydEnabled {
+			if tuiEnabled {
 				&nbsp;|&nbsp;
-				<a href="/proxy/tui/" target="_blank">Terminal</a>
+				<a href="/proxy/tui/" target="_blank">Text UI</a>
+			}
+			if shellEnabled {
+				&nbsp;|&nbsp;
+				<a href="/proxy/shell/" target="_blank">Shell</a>
 			}
 		</p>
 	</div>
 }
 
-templ instanceLinksDetailOOB(instance v1alpha1.ClawInstance, ttydEnabled bool) {
+templ instanceLinksDetailOOB(instance v1alpha1.ClawInstance, tuiEnabled bool, shellEnabled bool) {
 	<div id={ "links-" + instance.Name } hx-swap-oob="true">
-		if ttydEnabled {
+		if tuiEnabled || shellEnabled {
 			<div class="grid">
 				<a href="/proxy/web/" target="_blank" role="button">
 					Open Web UI
 				</a>
-				<a href="/proxy/tui/" target="_blank" role="button" class="secondary">
-					Open Terminal
-				</a>
+				if tuiEnabled {
+					<a href="/proxy/tui/" target="_blank" role="button" class="secondary">
+						Open Text UI
+					</a>
+				}
+				if shellEnabled {
+					<a href="/proxy/shell/" target="_blank" role="button" class="secondary">
+						Open Shell
+					</a>
+				}
 			</div>
 		} else {
 			<p>
@@ -102,7 +124,7 @@ templ instanceLinksDetailOOB(instance v1alpha1.ClawInstance, ttydEnabled bool) {
 	</div>
 }
 
-templ InstanceCard(instance v1alpha1.ClawInstance, userNames map[string]string, ttydEnabled bool, currentUserID string) {
+templ InstanceCard(instance v1alpha1.ClawInstance, userNames map[string]string, tuiEnabled bool, shellEnabled bool, currentUserID string) {
 	<article id={ "instance-" + instance.Name }>
 		<header>
 			<div class="instance-header">
@@ -114,7 +136,7 @@ templ InstanceCard(instance v1alpha1.ClawInstance, userNames map[string]string, 
 			<p><strong>Owner:</strong> { name }</p>
 		}
 		<p><strong>Image:</strong> { instance.Spec.Image }</p>
-		@InstanceLinks(instance, ttydEnabled, instance.Spec.UserId == currentUserID)
+		@InstanceLinks(instance, tuiEnabled, shellEnabled, instance.Spec.UserId == currentUserID)
 		<footer>
 			<a href={ templ.SafeURL("/ui/instances/" + instance.Name) } role="button" class="outline">Details</a>
 			<button

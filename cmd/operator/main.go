@@ -8,7 +8,6 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
-	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -59,27 +58,36 @@ func main() {
 	if serverNamespace == "" {
 		serverNamespace = "clawbake"
 	}
+
 	ttydEnabled := os.Getenv("INSTANCE_TTYD_ENABLED") != "false"
 
 	ttydImage := os.Getenv("INSTANCE_TTYD_IMAGE")
 	if ttydImage == "" {
 		ttydImage = "tsl0922/ttyd:alpine"
 	}
-	ttydPort := int32(7681)
-	if p := os.Getenv("INSTANCE_TTYD_PORT"); p != "" {
+
+	tuiEnabled := ttydEnabled && os.Getenv("INSTANCE_TUI_ENABLED") != "false"
+	tuiPort := int32(7681)
+	if p := os.Getenv("INSTANCE_TUI_PORT"); p != "" {
 		if v, err := strconv.Atoi(p); err == nil {
-			ttydPort = int32(v)
+			tuiPort = int32(v)
 		}
 	}
-	ttydCommand := os.Getenv("INSTANCE_TTYD_COMMAND")
-	if ttydCommand == "" {
-		ttydCommand = "/ttyd-bin/ttyd -W -p 7681 node /app/openclaw.mjs tui --token $OPENCLAW_GATEWAY_TOKEN"
+	tuiCommand := os.Getenv("INSTANCE_TUI_COMMAND")
+	if tuiCommand == "" {
+		tuiCommand = "/ttyd-bin/ttyd -W -p 7681 node /app/openclaw.mjs tui --token $OPENCLAW_GATEWAY_TOKEN"
 	}
 
-	ttydResources := buildTtydResources()
-
-	if !ttydEnabled {
-		ttydCommand = ""
+	shellEnabled := ttydEnabled && os.Getenv("INSTANCE_SHELL_ENABLED") != "false"
+	shellPort := int32(7682)
+	if p := os.Getenv("INSTANCE_SHELL_PORT"); p != "" {
+		if v, err := strconv.Atoi(p); err == nil {
+			shellPort = int32(v)
+		}
+	}
+	shellCommand := os.Getenv("INSTANCE_SHELL_COMMAND")
+	if shellCommand == "" {
+		shellCommand = "/ttyd-bin/ttyd -W -p 7682 /bin/bash"
 	}
 
 	reconciler := &operator.ClawInstanceReconciler{
@@ -89,9 +97,12 @@ func main() {
 		ServerNamespace:      serverNamespace,
 		DefaultGatewayConfig: os.Getenv("DEFAULT_GATEWAY_CONFIG"),
 		TtydImage:            ttydImage,
-		TtydPort:             ttydPort,
-		TtydCommand:          ttydCommand,
-		TtydResources:        ttydResources,
+		TUIEnabled:           tuiEnabled,
+		TUIPort:              tuiPort,
+		TUICommand:           tuiCommand,
+		ShellEnabled:         shellEnabled,
+		ShellPort:            shellPort,
+		ShellCommand:         shellCommand,
 	}
 
 	if serverURL := os.Getenv("SERVER_URL"); serverURL != "" {
@@ -116,25 +127,5 @@ func main() {
 	if err := mgr.Start(ctrl.SetupSignalHandler()); err != nil {
 		logger.Error(err, "problem running manager")
 		os.Exit(1)
-	}
-}
-
-func envOrDefault(key, fallback string) string {
-	if v := os.Getenv(key); v != "" {
-		return v
-	}
-	return fallback
-}
-
-func buildTtydResources() corev1.ResourceRequirements {
-	return corev1.ResourceRequirements{
-		Requests: corev1.ResourceList{
-			corev1.ResourceCPU:    resource.MustParse(envOrDefault("INSTANCE_TTYD_CPU_REQUEST", "50m")),
-			corev1.ResourceMemory: resource.MustParse(envOrDefault("INSTANCE_TTYD_MEMORY_REQUEST", "64Mi")),
-		},
-		Limits: corev1.ResourceList{
-			corev1.ResourceCPU:    resource.MustParse(envOrDefault("INSTANCE_TTYD_CPU_LIMIT", "200m")),
-			corev1.ResourceMemory: resource.MustParse(envOrDefault("INSTANCE_TTYD_MEMORY_LIMIT", "256Mi")),
-		},
 	}
 }

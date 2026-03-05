@@ -93,12 +93,16 @@ func TestReconcileCreate(t *testing.T) {
 	}
 
 	reconciler := &ClawInstanceReconciler{
-		Client:      k8sClient,
-		Scheme:      k8sClient.Scheme(),
-		Recorder:    record.NewFakeRecorder(10),
-		TtydImage:   "tsl0922/ttyd:alpine",
-		TtydPort:    7681,
-		TtydCommand: "/ttyd-bin/ttyd -p 7681 node /app/openclaw.mjs tui",
+		Client:       k8sClient,
+		Scheme:       k8sClient.Scheme(),
+		Recorder:     record.NewFakeRecorder(10),
+		TtydImage:    "tsl0922/ttyd:alpine",
+		TUIEnabled:   true,
+		TUIPort:      7681,
+		TUICommand:   "/ttyd-bin/ttyd -W -p 7681 node /app/openclaw.mjs tui --token $OPENCLAW_GATEWAY_TOKEN",
+		ShellEnabled: true,
+		ShellPort:    7682,
+		ShellCommand: "/ttyd-bin/ttyd -W -p 7682 /bin/bash",
 	}
 
 	req := reconcile.Request{
@@ -127,7 +131,7 @@ func TestReconcileCreate(t *testing.T) {
 		t.Errorf("expected user-id label 'testuser', got '%s'", ns.Labels["clawbake.io/user-id"])
 	}
 
-	// Verify deployment was created with 2 containers (openclaw + ttyd)
+	// Verify deployment was created with 1 container (compound command in primary)
 	deploy := &appsv1.Deployment{}
 	if err := k8sClient.Get(ctx, types.NamespacedName{Name: "openclaw", Namespace: "clawbake-test-instance"}, deploy); err != nil {
 		t.Fatalf("expected deployment to exist: %v", err)
@@ -135,20 +139,28 @@ func TestReconcileCreate(t *testing.T) {
 	if deploy.Spec.Template.Spec.Containers[0].Image != "ghcr.io/openclaw/openclaw:latest" {
 		t.Errorf("unexpected image: %s", deploy.Spec.Template.Spec.Containers[0].Image)
 	}
-	if len(deploy.Spec.Template.Spec.Containers) != 2 {
-		t.Fatalf("expected 2 containers, got %d", len(deploy.Spec.Template.Spec.Containers))
+	if len(deploy.Spec.Template.Spec.Containers) != 1 {
+		t.Fatalf("expected 1 container (compound command), got %d", len(deploy.Spec.Template.Spec.Containers))
 	}
-	if deploy.Spec.Template.Spec.Containers[1].Name != "ttyd" {
-		t.Errorf("expected second container name 'ttyd', got %q", deploy.Spec.Template.Spec.Containers[1].Name)
+	// Verify the compound command uses sh -c
+	cmd := deploy.Spec.Template.Spec.Containers[0].Command
+	if len(cmd) < 2 || cmd[0] != "sh" || cmd[1] != "-c" {
+		t.Errorf("expected compound sh -c command, got %v", cmd)
 	}
 
-	// Verify service was created with 2 ports
+	// Verify container has TUI and Shell ports
+	containerPorts := deploy.Spec.Template.Spec.Containers[0].Ports
+	if len(containerPorts) != 3 {
+		t.Fatalf("expected 3 container ports (http, tui, shell), got %d", len(containerPorts))
+	}
+
+	// Verify service was created with 3 ports (http, tui, shell)
 	svc := &corev1.Service{}
 	if err := k8sClient.Get(ctx, types.NamespacedName{Name: "openclaw", Namespace: "clawbake-test-instance"}, svc); err != nil {
 		t.Fatalf("expected service to exist: %v", err)
 	}
-	if len(svc.Spec.Ports) != 2 {
-		t.Fatalf("expected 2 service ports, got %d", len(svc.Spec.Ports))
+	if len(svc.Spec.Ports) != 3 {
+		t.Fatalf("expected 3 service ports, got %d", len(svc.Spec.Ports))
 	}
 
 	// Verify PVC was created
@@ -458,10 +470,11 @@ func TestReconcileCreateWithoutTtyd(t *testing.T) {
 	}
 
 	reconciler := &ClawInstanceReconciler{
-		Client:      k8sClient,
-		Scheme:      k8sClient.Scheme(),
-		Recorder:    record.NewFakeRecorder(10),
-		TtydCommand: "", // no ttyd
+		Client:       k8sClient,
+		Scheme:       k8sClient.Scheme(),
+		Recorder:     record.NewFakeRecorder(10),
+		TUIEnabled:   false,
+		ShellEnabled: false,
 	}
 
 	req := reconcile.Request{
@@ -481,13 +494,17 @@ func TestReconcileCreateWithoutTtyd(t *testing.T) {
 		t.Fatalf("second reconcile failed: %v", err)
 	}
 
-	// Verify deployment has only 1 container (no ttyd)
+	// Verify deployment has only 1 container with direct command (no sh -c)
 	deploy := &appsv1.Deployment{}
 	if err := k8sClient.Get(ctx, types.NamespacedName{Name: "openclaw", Namespace: "clawbake-test-no-ttyd"}, deploy); err != nil {
 		t.Fatalf("expected deployment to exist: %v", err)
 	}
 	if len(deploy.Spec.Template.Spec.Containers) != 1 {
 		t.Fatalf("expected 1 container, got %d", len(deploy.Spec.Template.Spec.Containers))
+	}
+	cmd := deploy.Spec.Template.Spec.Containers[0].Command
+	if cmd[0] != "node" {
+		t.Errorf("expected direct node command when ttyd disabled, got %v", cmd)
 	}
 
 	// Verify service has only 1 port
@@ -497,6 +514,134 @@ func TestReconcileCreateWithoutTtyd(t *testing.T) {
 	}
 	if len(svc.Spec.Ports) != 1 {
 		t.Fatalf("expected 1 service port, got %d", len(svc.Spec.Ports))
+	}
+}
+
+func TestReconcileCreateTUIOnly(t *testing.T) {
+	k8sClient, _ := setupEnvtest(t)
+	ctx := context.Background()
+
+	instance := newTestInstance()
+	instance.Name = "test-tui-only"
+	if err := k8sClient.Create(ctx, instance); err != nil {
+		t.Fatalf("failed to create ClawInstance: %v", err)
+	}
+
+	reconciler := &ClawInstanceReconciler{
+		Client:       k8sClient,
+		Scheme:       k8sClient.Scheme(),
+		Recorder:     record.NewFakeRecorder(10),
+		TtydImage:    "tsl0922/ttyd:alpine",
+		TUIEnabled:   true,
+		TUIPort:      7681,
+		TUICommand:   "/ttyd-bin/ttyd -W -p 7681 node /app/openclaw.mjs tui --token $OPENCLAW_GATEWAY_TOKEN",
+		ShellEnabled: false,
+	}
+
+	req := reconcile.Request{
+		NamespacedName: types.NamespacedName{
+			Name:      instance.Name,
+			Namespace: instance.Namespace,
+		},
+	}
+
+	if _, err := reconciler.Reconcile(ctx, req); err != nil {
+		t.Fatalf("first reconcile failed: %v", err)
+	}
+	if _, err := reconciler.Reconcile(ctx, req); err != nil {
+		t.Fatalf("second reconcile failed: %v", err)
+	}
+
+	deploy := &appsv1.Deployment{}
+	if err := k8sClient.Get(ctx, types.NamespacedName{Name: "openclaw", Namespace: "clawbake-test-tui-only"}, deploy); err != nil {
+		t.Fatalf("expected deployment to exist: %v", err)
+	}
+
+	// Should be 1 container with compound command
+	if len(deploy.Spec.Template.Spec.Containers) != 1 {
+		t.Fatalf("expected 1 container, got %d", len(deploy.Spec.Template.Spec.Containers))
+	}
+	cmd := deploy.Spec.Template.Spec.Containers[0].Command
+	if cmd[0] != "sh" {
+		t.Errorf("expected compound sh -c command, got %v", cmd)
+	}
+
+	// Should have 2 container ports (http + tui)
+	if len(deploy.Spec.Template.Spec.Containers[0].Ports) != 2 {
+		t.Fatalf("expected 2 container ports, got %d", len(deploy.Spec.Template.Spec.Containers[0].Ports))
+	}
+
+	// Service should have 2 ports (http + tui)
+	svc := &corev1.Service{}
+	if err := k8sClient.Get(ctx, types.NamespacedName{Name: "openclaw", Namespace: "clawbake-test-tui-only"}, svc); err != nil {
+		t.Fatalf("expected service to exist: %v", err)
+	}
+	if len(svc.Spec.Ports) != 2 {
+		t.Fatalf("expected 2 service ports, got %d", len(svc.Spec.Ports))
+	}
+}
+
+func TestReconcileCreateShellOnly(t *testing.T) {
+	k8sClient, _ := setupEnvtest(t)
+	ctx := context.Background()
+
+	instance := newTestInstance()
+	instance.Name = "test-shell-only"
+	if err := k8sClient.Create(ctx, instance); err != nil {
+		t.Fatalf("failed to create ClawInstance: %v", err)
+	}
+
+	reconciler := &ClawInstanceReconciler{
+		Client:       k8sClient,
+		Scheme:       k8sClient.Scheme(),
+		Recorder:     record.NewFakeRecorder(10),
+		TtydImage:    "tsl0922/ttyd:alpine",
+		TUIEnabled:   false,
+		ShellEnabled: true,
+		ShellPort:    7682,
+		ShellCommand: "/ttyd-bin/ttyd -W -p 7682 /bin/bash",
+	}
+
+	req := reconcile.Request{
+		NamespacedName: types.NamespacedName{
+			Name:      instance.Name,
+			Namespace: instance.Namespace,
+		},
+	}
+
+	if _, err := reconciler.Reconcile(ctx, req); err != nil {
+		t.Fatalf("first reconcile failed: %v", err)
+	}
+	if _, err := reconciler.Reconcile(ctx, req); err != nil {
+		t.Fatalf("second reconcile failed: %v", err)
+	}
+
+	deploy := &appsv1.Deployment{}
+	if err := k8sClient.Get(ctx, types.NamespacedName{Name: "openclaw", Namespace: "clawbake-test-shell-only"}, deploy); err != nil {
+		t.Fatalf("expected deployment to exist: %v", err)
+	}
+
+	// Should be 1 container with compound command
+	if len(deploy.Spec.Template.Spec.Containers) != 1 {
+		t.Fatalf("expected 1 container, got %d", len(deploy.Spec.Template.Spec.Containers))
+	}
+	cmd := deploy.Spec.Template.Spec.Containers[0].Command
+	if cmd[0] != "sh" {
+		t.Errorf("expected compound sh -c command, got %v", cmd)
+	}
+
+	// Should have 2 container ports (http + shell)
+	if len(deploy.Spec.Template.Spec.Containers[0].Ports) != 2 {
+		t.Fatalf("expected 2 container ports, got %d", len(deploy.Spec.Template.Spec.Containers[0].Ports))
+	}
+
+	// Service should have 2 ports (http + shell)
+	svc := &corev1.Service{}
+	if err := k8sClient.Get(ctx, types.NamespacedName{Name: "openclaw", Namespace: "clawbake-test-shell-only"}, svc); err != nil {
+		t.Fatalf("expected service to exist: %v", err)
+	}
+	if len(svc.Spec.Ports) != 2 {
+		t.Fatalf("expected 2 service ports, got %d", len(svc.Spec.Ports))
 	}
 }
 

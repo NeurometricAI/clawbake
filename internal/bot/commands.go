@@ -248,14 +248,22 @@ func (b *Bot) handleOpen(ctx context.Context, c echo.Context, cmd slack.SlashCom
 		return respondSlack(c, fmt.Sprintf("Your instance isn't ready yet (status: %s). Try again shortly.", instance.Status.Phase))
 	}
 
-	// Parse optional "web" or "tui" argument (default: web)
+	// Parse optional "web", "tui", or "shell" argument (default: web)
 	parts := strings.Fields(cmd.Text)
 	mode := "web"
-	if len(parts) >= 2 && parts[1] == "tui" {
-		if !b.ttydEnabled {
-			return respondSlack(c, "Terminal access is not enabled.")
+	if len(parts) >= 2 {
+		switch parts[1] {
+		case "tui":
+			if !b.tuiEnabled {
+				return respondSlack(c, "Terminal access is not enabled.")
+			}
+			mode = "tui"
+		case "shell":
+			if !b.shellEnabled {
+				return respondSlack(c, "Shell access is not enabled.")
+			}
+			mode = "shell"
 		}
-		mode = "tui"
 	}
 
 	return respondSlack(c, fmt.Sprintf("Open your instance: %s/proxy/%s/", b.baseURL, mode))
@@ -295,8 +303,11 @@ func (b *Bot) handleHelp(ctx context.Context, c echo.Context, cmdName string) er
 		createUsage + "\n" +
 		fmt.Sprintf("• `%s status` - Show your instance status\n", cmdName) +
 		fmt.Sprintf("• `%s open` - Get a link to your instance web UI\n", cmdName)
-	if b.ttydEnabled {
+	if b.tuiEnabled {
 		help += fmt.Sprintf("• `%s open tui` - Get a link to your instance terminal\n", cmdName)
+	}
+	if b.shellEnabled {
+		help += fmt.Sprintf("• `%s open shell` - Get a link to your instance shell\n", cmdName)
 	}
 	help += fmt.Sprintf("• `%s delete` - Delete your instance\n", cmdName) +
 		fmt.Sprintf("• `%s help` - Show this help message\n\n", cmdName) +

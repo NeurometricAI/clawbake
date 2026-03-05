@@ -14,10 +14,9 @@ data:
   instance-gateway-config: {{ .Values.instanceDefaults.gatewayConfig | quote }}
   instance-ttyd-enabled: {{ .Values.instanceDefaults.ttyd.enabled | quote }}
   instance-ttyd-image: {{ .Values.instanceDefaults.ttyd.image }}
-  instance-ttyd-port: {{ .Values.instanceDefaults.ttyd.port | quote }}
-  instance-ttyd-command: {{ .Values.instanceDefaults.ttyd.command | quote }}
-  instance-ttyd-cpu-request: {{ .Values.instanceDefaults.ttyd.cpuRequest }}
-  instance-ttyd-memory-request: {{ .Values.instanceDefaults.ttyd.memoryRequest }}
-  instance-ttyd-cpu-limit: {{ .Values.instanceDefaults.ttyd.cpuLimit }}
-  instance-ttyd-memory-limit: {{ .Values.instanceDefaults.ttyd.memoryLimit }}
-
+  instance-tui-enabled: {{ and .Values.instanceDefaults.ttyd.enabled .Values.instanceDefaults.ttyd.tui.enabled | quote }}
+  instance-tui-port: {{ .Values.instanceDefaults.ttyd.tui.port | quote }}
+  instance-tui-command: {{ .Values.instanceDefaults.ttyd.tui.command | quote }}
+  instance-shell-enabled: {{ and .Values.instanceDefaults.ttyd.enabled .Values.instanceDefaults.ttyd.shell.enabled | quote }}
+  instance-shell-port: {{ .Values.instanceDefaults.ttyd.shell.port | quote }}
+  instance-shell-command: {{ .Values.instanceDefaults.ttyd.shell.command | quote }}

@@ -3,6 +3,7 @@ package operator
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	appsv1 "k8s.io/api/apps/v1"
@@ -50,9 +51,12 @@ type ClawInstanceReconciler struct {
 	ServerNamespace      string
 	DefaultGatewayConfig string
 	TtydImage            string
-	TtydPort             int32
-	TtydCommand          string
-	TtydResources        corev1.ResourceRequirements
+	TUIEnabled           bool
+	TUIPort              int32
+	TUICommand           string
+	ShellEnabled         bool
+	ShellPort            int32
+	ShellCommand         string
 }
 
 func (r *ClawInstanceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
@@ -246,6 +250,30 @@ func (r *ClawInstanceReconciler) reconcilePVC(ctx context.Context, instance *cla
 	return err
 }
 
+// ttydNeeded returns true if any ttyd-based feature (TUI or Shell) is enabled.
+func (r *ClawInstanceReconciler) ttydNeeded() bool {
+	return r.TUIEnabled || r.ShellEnabled
+}
+
+// buildCommand constructs the compound shell command for the primary container.
+// Background ttyd processes are started before the gateway, which runs as PID 1 via exec.
+func (r *ClawInstanceReconciler) buildCommand() []string {
+	if !r.ttydNeeded() {
+		return []string{"node", "/app/openclaw.mjs", "gateway", "run", "--bind", "lan", "--allow-unconfigured"}
+	}
+
+	var parts []string
+	if r.TUIEnabled {
+		parts = append(parts, r.TUICommand+" &")
+	}
+	if r.ShellEnabled {
+		parts = append(parts, r.ShellCommand+" &")
+	}
+	parts = append(parts, "exec node /app/openclaw.mjs gateway run --bind lan --allow-unconfigured")
+
+	return []string{"sh", "-c", strings.Join(parts, "\n")}
+}
+
 func (r *ClawInstanceReconciler) reconcileDeployment(ctx context.Context, instance *clawbakev1alpha1.ClawInstance, namespaceName string) error {
 	deploy := &appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
@@ -294,18 +322,58 @@ func (r *ClawInstanceReconciler) reconcileDeployment(ctx context.Context, instan
 			},
 		}
 
+		// Add ttyd init container and volume if any ttyd feature is enabled
+		if r.ttydNeeded() {
+			volumes = append(volumes, corev1.Volume{
+				Name: "ttyd-bin",
+				VolumeSource: corev1.VolumeSource{
+					EmptyDir: &corev1.EmptyDirVolumeSource{},
+				},
+			})
+
+			initContainers = append(initContainers, corev1.Container{
+				Name:    "install-ttyd",
+				Image:   r.TtydImage,
+				Command: []string{"cp", "/usr/bin/ttyd", "/ttyd-bin/ttyd"},
+				VolumeMounts: []corev1.VolumeMount{
+					{Name: "ttyd-bin", MountPath: "/ttyd-bin"},
+				},
+			})
+
+			volumeMounts = append(volumeMounts, corev1.VolumeMount{
+				Name: "ttyd-bin", MountPath: "/ttyd-bin",
+			})
+		}
+
+		// Build container ports
+		ports := []corev1.ContainerPort{
+			{
+				Name:          "http",
+				ContainerPort: 18789,
+				Protocol:      corev1.ProtocolTCP,
+			},
+		}
+		if r.TUIEnabled {
+			ports = append(ports, corev1.ContainerPort{
+				Name:          "tui",
+				ContainerPort: r.TUIPort,
+				Protocol:      corev1.ProtocolTCP,
+			})
+		}
+		if r.ShellEnabled {
+			ports = append(ports, corev1.ContainerPort{
+				Name:          "shell",
+				ContainerPort: r.ShellPort,
+				Protocol:      corev1.ProtocolTCP,
+			})
+		}
+
 		containers := []corev1.Container{
 			{
 				Name:    "openclaw",
 				Image:   instance.Spec.Image,
-				Command: []string{"node", "/app/openclaw.mjs", "gateway", "run", "--bind", "lan", "--allow-unconfigured"},
-				Ports: []corev1.ContainerPort{
-					{
-						Name:          "http",
-						ContainerPort: 18789,
-						Protocol:      corev1.ProtocolTCP,
-					},
-				},
+				Command: r.buildCommand(),
+				Ports:   ports,
 				Env: []corev1.EnvVar{
 					{Name: "NODE_OPTIONS", Value: "--max-old-space-size=1536 --disable-warning=ExperimentalWarning"},
 					{Name: "OPENCLAW_NODE_OPTIONS_READY", Value: "1"},
@@ -324,57 +392,6 @@ func (r *ClawInstanceReconciler) reconcileDeployment(ctx context.Context, instan
 				Resources:    buildResourceRequirements(instance.Spec.Resources),
 				VolumeMounts: volumeMounts,
 			},
-		}
-
-		if r.TtydCommand != "" {
-			// Add emptyDir volume for the ttyd binary
-			volumes = append(volumes, corev1.Volume{
-				Name: "ttyd-bin",
-				VolumeSource: corev1.VolumeSource{
-					EmptyDir: &corev1.EmptyDirVolumeSource{},
-				},
-			})
-
-			// Init container copies ttyd binary from the ttyd image
-			initContainers = append(initContainers, corev1.Container{
-				Name:    "install-ttyd",
-				Image:   r.TtydImage,
-				Command: []string{"cp", "/usr/bin/ttyd", "/ttyd-bin/ttyd"},
-				VolumeMounts: []corev1.VolumeMount{
-					{Name: "ttyd-bin", MountPath: "/ttyd-bin"},
-				},
-			})
-
-			ttydMounts := append(volumeMounts, corev1.VolumeMount{
-				Name: "ttyd-bin", MountPath: "/ttyd-bin",
-			})
-
-			containers = append(containers, corev1.Container{
-				Name:    "ttyd",
-				Image:   instance.Spec.Image,
-				Command: []string{"sh", "-c", r.TtydCommand},
-				Env: []corev1.EnvVar{
-					{Name: "OPENCLAW_GATEWAY_TOKEN", Value: instance.Spec.GatewayToken},
-				},
-				Ports: []corev1.ContainerPort{
-					{
-						Name:          "ttyd",
-						ContainerPort: r.TtydPort,
-						Protocol:      corev1.ProtocolTCP,
-					},
-				},
-				ReadinessProbe: &corev1.Probe{
-					ProbeHandler: corev1.ProbeHandler{
-						TCPSocket: &corev1.TCPSocketAction{
-							Port: intstr.FromInt32(r.TtydPort),
-						},
-					},
-					InitialDelaySeconds: 10,
-					PeriodSeconds:       5,
-				},
-				Resources:    r.TtydResources,
-				VolumeMounts: ttydMounts,
-			})
 		}
 
 		deploy.Labels = labels
@@ -446,11 +463,19 @@ func (r *ClawInstanceReconciler) reconcileService(ctx context.Context, instance 
 				Protocol:   corev1.ProtocolTCP,
 			},
 		}
-		if r.TtydCommand != "" {
+		if r.TUIEnabled {
 			ports = append(ports, corev1.ServicePort{
-				Name:       "ttyd",
-				Port:       r.TtydPort,
-				TargetPort: intstr.FromString("ttyd"),
+				Name:       "tui",
+				Port:       r.TUIPort,
+				TargetPort: intstr.FromString("tui"),
+				Protocol:   corev1.ProtocolTCP,
+			})
+		}
+		if r.ShellEnabled {
+			ports = append(ports, corev1.ServicePort{
+				Name:       "shell",
+				Port:       r.ShellPort,
+				TargetPort: intstr.FromString("shell"),
 				Protocol:   corev1.ProtocolTCP,
 			})
 		}

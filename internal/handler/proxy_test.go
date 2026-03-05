@@ -12,6 +12,8 @@ func TestClassifyProxyPath(t *testing.T) {
 		{"/proxy/web/some/path", portWeb, proxyPrefixWeb},
 		{"/proxy/tui/", portTUI, proxyPrefixTUI},
 		{"/proxy/tui/ws", portTUI, proxyPrefixTUI},
+		{"/proxy/shell/", portShell, proxyPrefixShell},
+		{"/proxy/shell/ws", portShell, proxyPrefixShell},
 		{"/proxy/unknown", portWeb, proxyPrefixWeb},
 		{"/proxy/", portWeb, proxyPrefixWeb},
 	}
@@ -39,8 +41,11 @@ func TestStripRoutePrefix(t *testing.T) {
 		{"/proxy/web/foo/bar", proxyPrefixWeb, "/foo/bar"},
 		{"/proxy/tui/", proxyPrefixTUI, "/"},
 		{"/proxy/tui/ws", proxyPrefixTUI, "/ws"},
+		{"/proxy/shell/", proxyPrefixShell, "/"},
+		{"/proxy/shell/ws", proxyPrefixShell, "/ws"},
 		{"/proxy/web", proxyPrefixWeb, "/"},
 		{"/proxy/tui", proxyPrefixTUI, "/"},
+		{"/proxy/shell", proxyPrefixShell, "/"},
 	}
 
 	for _, tt := range tests {

@@ -14,7 +14,7 @@ templ conditionRow(cond metav1.Condition) {
 	</tr>
 }
 
-templ InstanceDetail(instance v1alpha1.ClawInstance, isAdmin bool, ttydEnabled bool, isOwner bool) {
+templ InstanceDetail(instance v1alpha1.ClawInstance, isAdmin bool, tuiEnabled bool, shellEnabled bool, isOwner bool) {
 	@Layout("Instance", isAdmin) {
 		<article>
 			<header>
@@ -62,7 +62,7 @@ templ InstanceDetail(instance v1alpha1.ClawInstance, isAdmin bool, ttydEnabled b
 					}
 				</tbody>
 			</table>
-			@InstanceLinksDetail(instance, ttydEnabled, isOwner)
+			@InstanceLinksDetail(instance, tuiEnabled, shellEnabled, isOwner)
 			if len(instance.Status.Conditions) > 0 {
 				<h3>Conditions</h3>
 				<table>
