@@ -1,3 +1,6 @@
+include:
+  - docker-compose-includes.yml
+
 services:
   devcontainer:
     build: 

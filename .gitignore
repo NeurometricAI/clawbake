@@ -10,3 +10,4 @@ bin/
 .DS_Store
 .env
 .mise.toml
+.devcontainer/docker-compose-includes.yml

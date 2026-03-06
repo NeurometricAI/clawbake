@@ -79,12 +79,46 @@ run_hook_scripts() {
     fi
 }
 
+# Generate docker-compose-includes.yml with include entries for all module
+# compose files (docker-compose-*.yml) found in the devcontainer directory.
+# Produces a valid empty compose file when no modules are present.
+generate_compose_includes() {
+    local includes_file="${DEVCONTAINER_DIR}/docker-compose-includes.yml"
+    local compose_files=()
+
+    # Scan commands-project.d/ and commands.d/ for module compose files
+    for dir in "${DEVCONTAINER_DIR}/commands-project.d" "${DEVCONTAINER_DIR}/commands.d"; do
+        for f in "$dir"/docker-compose-*.yml; do
+            [ -f "$f" ] || continue
+            compose_files+=("${f#${DEVCONTAINER_DIR}/}")
+        done
+    done
+
+    if [ ${#compose_files[@]} -eq 0 ]; then
+        echo "services: {}" > "$includes_file"
+    else
+        {
+            echo "include:"
+            for path in "${compose_files[@]}"; do
+                echo "  - $path"
+            done
+        } > "$includes_file"
+    fi
+
+    echo "Generated docker-compose-includes.yml (${#compose_files[@]} module(s))"
+}
+
 case "$ACTION" in
     init)
         # Commands that run on the host during initializeCommand
         # Copy over global lifecycle command scripts if they exist
         echo "Initializing devcontainer lifecycle hooks"
         test -d ~/.config/devcontainer && cp -nrp ~/.config/devcontainer/* ${DEVCONTAINER_DIR}/ || true
+
+        # Generate docker-compose-includes.yml from any module compose files.
+        # Both committed (project) and home-sourced compose files are now in
+        # DEVCONTAINER_DIR after the copy above.
+        generate_compose_includes
 
         # Run initializeCommand hooks: committed project scripts first, then user scripts
         export MISE_SCOPE=""

@@ -5,7 +5,7 @@ This directory contains the development container configuration for this project
 ## Features
 
 - **Docker-outside-of-Docker**: Access to the host Docker daemon from within the container
-- **Claude CLI Integration**: Automatically mounts `~/.claude` and `~/.claude.json` for consistent Claude configuration
+- **mise Tool Management**: Project tools declared in `config/mise.toml`, symlinked to workspace root at container start
 - **Custom Lifecycle Hooks**: Extensible scripts for initialization, post-create, and post-attach commands
 
 ## Usage

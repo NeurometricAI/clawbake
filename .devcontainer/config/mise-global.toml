@@ -1,5 +1,0 @@
-[tools]
-aws-cli = { version = "latest", symlink_bins = "true" }
-ffmpeg = "latest"
-node = "latest"
-"npm:@playwright/cli" = "latest"
