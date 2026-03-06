@@ -4,5 +4,9 @@
 !.env.example
 tmp/
 bin/
+.claude
+.playwright
 .playwright-cli/
 .DS_Store
+.env
+.mise.toml

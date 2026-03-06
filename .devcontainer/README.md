@@ -1,14 +1,12 @@
 # Dev Container Configuration
 
-This directory contains the development container configuration for this project, based on the [NeurometricAI devcontainer-template](https://github.com/NeurometricAI/devcontainer-template).
+This directory contains the development container configuration for this project.
 
 ## Features
 
 - **Docker-outside-of-Docker**: Access to the host Docker daemon from within the container
 - **Claude CLI Integration**: Automatically mounts `~/.claude` and `~/.claude.json` for consistent Claude configuration
-- **AWS CLI Configuration**: Initializes AWS CLI with environment-based configuration
 - **Custom Lifecycle Hooks**: Extensible scripts for initialization, post-create, and post-attach commands
-- **Optional PostgreSQL**: Uncomment `docker-compose-postgresql.yml` in `devcontainer.json` to enable
 
 ## Usage
 
@@ -22,7 +20,7 @@ Open this project in VS Code with the Dev Containers extension installed. VS Cod
 - **commands-project.d/**: Committed lifecycle scripts that travel with the project (e.g., mise init)
 - **commands.d/**: User-specific lifecycle scripts, gitignored, populated from `~/.config/devcontainer/` during init
 - **scripts/**: Core lifecycle hook runner and utilities
-- **config/**: Tool configuration (e.g., mise-global.toml)
+- **config/**: Tool configuration (e.g., mise.toml)
 
 ## Environment Variables
 

@@ -25,9 +25,9 @@ RUN echo 'eval "$($HOME/.local/bin/mise activate bash)"' >> ~/.bashrc
 RUN echo 'eval "$($HOME/.local/bin/mise activate zsh)"' >> ~/.zshrc
 RUN mkdir -p ~/.config/fish/conf.d && echo '$HOME/.local/bin/mise activate fish | source' >> ~/.config/fish/conf.d/mise.fish
 
-# Copying so global install included in docker build, but also mounting in
-# devcontainer.json so user changes persist
-COPY --chown=${USERNAME}:${USERNAME} config/mise-global.toml ${HOME}/.config/mise/config.toml
+# Copying so docker build caches project installs in the docker image
+# Subsequent mise installations get added to mounted home directory
+COPY --chown=${USERNAME}:${USERNAME} config/mise.toml ${HOME}/.config/mise/config.toml
 RUN ${HOME}/.local/bin/mise -y install
 
 # The oh-my-posh prompt engine, themes at https://ohmyposh.dev/docs/themes

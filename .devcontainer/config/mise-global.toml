@@ -1,25 +1,5 @@
-# Add tools here with `mise use -g toolname`, or edit this file directly.  They
-# will be immediately available and persist (due to home directory volume in
-# dcoker-compose.yml) through subsequent devcontainer restarts and rebuilds.
-# Without the `-g` they will be added to a mise.toml in workspace directory
-# instead of home directory
-
-[settings]
-# attestations broken for gh install
-github_attestations = false
-
 [tools]
-usage = "latest"
-yq = "latest"
-gh = "latest"
-helm = "latest"
-go = "latest"
-k3d = "latest"
-tmux = "latest"
-kubectl = "latest"
-kubebuilder = "latest"
-k9s = "latest"
+aws-cli = { version = "latest", symlink_bins = "true" }
+ffmpeg = "latest"
 node = "latest"
 "npm:@playwright/cli" = "latest"
-aws-cli = { version = "latest", symlink_bins = "true" }
-claude-code = "latest"

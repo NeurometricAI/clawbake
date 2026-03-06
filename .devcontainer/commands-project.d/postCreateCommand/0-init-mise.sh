@@ -4,12 +4,12 @@ set -euo pipefail
 
 # Uses $DEVCONTAINER_DIR and $WORKSPACE_DIR exported by custom-commands.sh
 
-# Use a symlink instead of a docker mount to avoid errors when one reverts git
-# changes (unlinking files breaks the mount)
-mkdir -p ~/.config/mise
-ln -sf ${DEVCONTAINER_DIR}/config/mise-global.toml ~/.config/mise/config.toml
+# Symlink the project mise config to the workspace root so `mise use <tool>`
+# writes to the committed config while `mise use -g` writes to the home volume.
+# Linking here prevents annoying mise trust warnings when accessing the repo
+# outside of a devcontainer
+ln -sf ${DEVCONTAINER_DIR}/config/mise.toml ${WORKSPACE_DIR}/.mise.toml
 
 export MISE_YES=1
-mise trust ~/.config/mise/config.toml
 mise trust ${WORKSPACE_DIR}
 mise install

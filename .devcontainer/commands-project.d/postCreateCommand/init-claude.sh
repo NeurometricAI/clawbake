@@ -19,4 +19,4 @@ else
     cp "$HOST_FILE" "$TARGET_FILE"
 fi
 
-mise use -g claude-code
+mise use $MISE_SCOPE claude-code

@@ -1,0 +1,20 @@
+# Project-scoped mise config — symlinked to ${WORKSPACE_DIR}/.mise.toml at
+# container start.  `mise use <tool>` writes here; `mise use -g <tool>` writes
+# to ~/.config/mise/config.toml in the home volume (not tracked).
+
+[settings]
+# attestations broken for gh install
+github_attestations = false
+
+[tools]
+usage = "latest"
+yq = "latest"
+gh = "latest"
+claude-code = "latest"
+helm = "latest"
+go = "latest"
+k3d = "latest"
+tmux = "latest"
+kubectl = "latest"
+kubebuilder = "latest"
+k9s = "latest"

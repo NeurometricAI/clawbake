@@ -87,7 +87,9 @@ case "$ACTION" in
         test -d ~/.config/devcontainer && cp -nrp ~/.config/devcontainer/* ${DEVCONTAINER_DIR}/ || true
 
         # Run initializeCommand hooks: committed project scripts first, then user scripts
+        export MISE_SCOPE=""
         run_hook_scripts "${DEVCONTAINER_DIR}/commands-project.d/initializeCommand"
+        export MISE_SCOPE="-g"
         run_hook_scripts "${DEVCONTAINER_DIR}/commands.d/initializeCommand"
         ;;
 
@@ -106,7 +108,9 @@ case "$ACTION" in
         fi
 
         # Run hooks: committed project scripts first, then user scripts
+        export MISE_SCOPE=""
         run_hook_scripts "${DEVCONTAINER_DIR}/commands-project.d/${HOOK_NAME}"
+        export MISE_SCOPE="-g"
         run_hook_scripts "${DEVCONTAINER_DIR}/commands.d/${HOOK_NAME}"
         ;;
 
