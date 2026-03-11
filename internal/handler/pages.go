@@ -3,6 +3,7 @@ package handler
 import (
 	"bytes"
 	"encoding/json"
+	"log"
 	"net/http"
 	"strings"
 
@@ -324,6 +325,7 @@ func (h *Handler) PageEditInstanceConfig(c echo.Context) error {
 	configJSON, err := k8s.ReadInstanceConfig(c.Request().Context(), h.K8sConfig, h.K8s, instanceNS)
 	fromPod := err == nil
 	if !fromPod {
+		log.Printf("edit-config: failed to read live config from pod in %s: %v", instanceNS, err)
 		// Fall back to the CRD's gateway config
 		configJSON = instance.Spec.GatewayConfig
 	}

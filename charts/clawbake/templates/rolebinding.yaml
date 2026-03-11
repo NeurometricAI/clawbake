@@ -13,3 +13,19 @@ subjects:
   - kind: ServiceAccount
     name: {{ include "clawbake.fullname" . }}-server
     namespace: {{ .Release.Namespace }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: {{ include "clawbake.fullname" . }}-server
+  labels:
+    {{- include "clawbake.labels" . | nindent 4 }}
+    app.kubernetes.io/component: server
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: {{ include "clawbake.fullname" . }}-server
+subjects:
+  - kind: ServiceAccount
+    name: {{ include "clawbake.fullname" . }}-server
+    namespace: {{ .Release.Namespace }}

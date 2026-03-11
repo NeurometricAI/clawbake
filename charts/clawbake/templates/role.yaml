@@ -12,3 +12,19 @@ rules:
   - apiGroups: ["clawbake.io"]
     resources: ["clawinstances/status"]
     verbs: ["get"]
+---
+# ClusterRole for exec into instance pods (in clawbake-* namespaces)
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: {{ include "clawbake.fullname" . }}-server
+  labels:
+    {{- include "clawbake.labels" . | nindent 4 }}
+    app.kubernetes.io/component: server
+rules:
+  - apiGroups: [""]
+    resources: ["pods"]
+    verbs: ["get", "list"]
+  - apiGroups: [""]
+    resources: ["pods/exec"]
+    verbs: ["create"]
