@@ -256,7 +256,9 @@ func (r *ClawInstanceReconciler) ttydNeeded() bool {
 }
 
 // buildCommand constructs the compound shell command for the primary container.
-// Background ttyd processes are started before the gateway, which runs as PID 1 via exec.
+// When shell is enabled, openclaw runs in a restart loop so that ttyd stays alive
+// for rescue editing (e.g. fixing openclaw.json on the PV) even if openclaw crashes.
+// When only TUI is enabled (no shell), openclaw runs as PID 1 via exec.
 func (r *ClawInstanceReconciler) buildCommand() []string {
 	if !r.ttydNeeded() {
 		return []string{"node", "/app/openclaw.mjs", "gateway", "run", "--bind", "lan", "--allow-unconfigured"}
@@ -268,8 +270,16 @@ func (r *ClawInstanceReconciler) buildCommand() []string {
 	}
 	if r.ShellEnabled {
 		parts = append(parts, r.ShellCommand+" &")
+		// Run openclaw in a restart loop so ttyd shell survives crashes,
+		// allowing users to rescue-edit openclaw.json on the PV.
+		parts = append(parts, `while true; do
+  node /app/openclaw.mjs gateway run --bind lan --allow-unconfigured
+  echo "openclaw exited ($?), restarting in 5s..."
+  sleep 5
+done`)
+	} else {
+		parts = append(parts, "exec node /app/openclaw.mjs gateway run --bind lan --allow-unconfigured")
 	}
-	parts = append(parts, "exec node /app/openclaw.mjs gateway run --bind lan --allow-unconfigured")
 
 	return []string{"sh", "-c", strings.Join(parts, "\n")}
 }
