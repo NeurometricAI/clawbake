@@ -83,6 +83,7 @@ templ InstanceDetail(instance v1alpha1.ClawInstance, isAdmin bool, tuiEnabled bo
 			}
 			<footer>
 				<a href="/" role="button" class="secondary outline">Back</a>
+				<a href={ templ.SafeURL("/ui/instances/" + instance.Name + "/edit-config") } role="button" class="outline">Edit Config</a>
 				<button
 					class="contrast outline"
 					hx-delete={ "/ui/instances/" + instance.Name + "?redirect=true" }

@@ -146,7 +146,7 @@ func main() {
 		devAuth = auth.NewDevAuth(cfg.SessionSecret, cfg.BaseURL, db)
 	}
 
-	k8sClient, err := k8s.NewClient()
+	k8sClient, k8sConfig, err := k8s.NewClient()
 	if err != nil {
 		log.Fatalf("failed to create k8s client: %v", err)
 	}
@@ -158,12 +158,13 @@ func main() {
 	}
 
 	h := &handler.Handler{
-		DB:      db,
-		K8s:     k8sClient,
-		Auth:    oidcAuth,
-		DevAuth: devAuth,
-		Config:  cfg,
-		Bot:     slackBot,
+		DB:        db,
+		K8s:       k8sClient,
+		K8sConfig: k8sConfig,
+		Auth:      oidcAuth,
+		DevAuth:   devAuth,
+		Config:    cfg,
+		Bot:       slackBot,
 	}
 
 	e := echo.New()

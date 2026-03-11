@@ -319,12 +319,22 @@ func (r *ClawInstanceReconciler) reconcileDeployment(ctx context.Context, instan
 			gatewayConfig = r.DefaultGatewayConfig
 		}
 
+		configGen := fmt.Sprintf("%d", instance.Spec.ConfigGeneration)
 		initContainers := []corev1.Container{
 			{
 				Name:  "write-config",
 				Image: instance.Spec.Image,
 				Command: []string{"sh", "-c",
-					fmt.Sprintf(`test -f /home/node/.openclaw/openclaw.json || echo '%s' > /home/node/.openclaw/openclaw.json`, gatewayConfig),
+					fmt.Sprintf(`if [ ! -f /home/node/.openclaw/openclaw.json ]; then
+  echo '%s' > /home/node/.openclaw/openclaw.json
+  echo "%s" > /home/node/.openclaw/.config-gen
+else
+  current=$(cat /home/node/.openclaw/.config-gen 2>/dev/null || echo -1)
+  if [ "$current" != "%s" ]; then
+    echo '%s' > /home/node/.openclaw/openclaw.json
+    echo "%s" > /home/node/.openclaw/.config-gen
+  fi
+fi`, gatewayConfig, configGen, configGen, gatewayConfig, configGen),
 				},
 				VolumeMounts: []corev1.VolumeMount{
 					{Name: "data", MountPath: "/home/node/.openclaw", SubPath: "openclaw-config"},

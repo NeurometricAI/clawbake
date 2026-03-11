@@ -15,12 +15,13 @@ const (
 
 // ClawInstanceSpec defines the desired state of a ClawInstance.
 type ClawInstanceSpec struct {
-	UserId        string               `json:"userId"`
-	Image         string               `json:"image"`
-	GatewayToken  string               `json:"gatewayToken,omitempty"`
-	GatewayConfig string               `json:"gatewayConfig,omitempty"`
-	Resources     ClawInstanceResources `json:"resources,omitempty"`
-	Storage       ClawInstanceStorage   `json:"storage,omitempty"`
+	UserId           string               `json:"userId"`
+	Image            string               `json:"image"`
+	GatewayToken     string               `json:"gatewayToken,omitempty"`
+	GatewayConfig    string               `json:"gatewayConfig,omitempty"`
+	ConfigGeneration int64                `json:"configGeneration,omitempty"`
+	Resources        ClawInstanceResources `json:"resources,omitempty"`
+	Storage          ClawInstanceStorage   `json:"storage,omitempty"`
 }
 
 type ClawInstanceResources struct {

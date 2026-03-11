@@ -48,6 +48,9 @@ spec:
           spec:
             description: ClawInstanceSpec defines the desired state of a ClawInstance.
             properties:
+              configGeneration:
+                format: int64
+                type: integer
               gatewayConfig:
                 type: string
               gatewayToken:

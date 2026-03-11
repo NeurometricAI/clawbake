@@ -304,6 +304,65 @@ func (h *Handler) PageUpdateDefaults(c echo.Context) error {
 	return c.Redirect(http.StatusSeeOther, "/ui/admin/defaults")
 }
 
+func (h *Handler) PageEditInstanceConfig(c echo.Context) error {
+	id := c.Param("id")
+
+	instance, err := k8s.GetInstance(c.Request().Context(), h.K8s, h.Config.KubeNamespace, id)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusNotFound, "instance not found")
+	}
+
+	user := auth.UserFromContext(c.Request().Context())
+	userID, _ := user.ID.Value()
+	uid, _ := userID.(string)
+	if user.Role != "admin" && instance.Spec.UserId != uid {
+		return echo.NewHTTPError(http.StatusNotFound, "instance not found")
+	}
+
+	// Try to read the live config from the running pod
+	instanceNS := "clawbake-" + instance.Name
+	configJSON, err := k8s.ReadInstanceConfig(c.Request().Context(), h.K8sConfig, h.K8s, instanceNS)
+	fromPod := err == nil
+	if !fromPod {
+		// Fall back to the CRD's gateway config
+		configJSON = instance.Spec.GatewayConfig
+	}
+
+	configJSON = prettyJSON(configJSON)
+
+	return render(c, http.StatusOK, templates.InstanceEditConfig(*instance, configJSON, fromPod, user.Role == "admin"))
+}
+
+func (h *Handler) PageUpdateInstanceConfig(c echo.Context) error {
+	id := c.Param("id")
+
+	instance, err := k8s.GetInstance(c.Request().Context(), h.K8s, h.Config.KubeNamespace, id)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusNotFound, "instance not found")
+	}
+
+	user := auth.UserFromContext(c.Request().Context())
+	userID, _ := user.ID.Value()
+	uid, _ := userID.(string)
+	if user.Role != "admin" && instance.Spec.UserId != uid {
+		return echo.NewHTTPError(http.StatusNotFound, "instance not found")
+	}
+
+	gatewayConfig := c.FormValue("gatewayConfig")
+	if !json.Valid([]byte(gatewayConfig)) {
+		return echo.NewHTTPError(http.StatusBadRequest, "gateway config is not valid JSON")
+	}
+
+	instance.Spec.GatewayConfig = compactJSON(gatewayConfig)
+	instance.Spec.ConfigGeneration++
+
+	if err := k8s.UpdateInstance(c.Request().Context(), h.K8s, instance); err != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, "failed to update instance config")
+	}
+
+	return c.Redirect(http.StatusSeeOther, "/ui/instances/"+id)
+}
+
 func prettyJSON(s string) string {
 	var buf bytes.Buffer
 	if err := json.Indent(&buf, []byte(s), "", "  "); err != nil {

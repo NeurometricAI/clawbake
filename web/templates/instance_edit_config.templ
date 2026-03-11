@@ -1,0 +1,63 @@
+package templates
+
+import v1alpha1 "github.com/clawbake/clawbake/api/v1alpha1"
+
+templ InstanceEditConfig(instance v1alpha1.ClawInstance, configJSON string, fromPod bool, isAdmin bool) {
+	@Layout("Edit Config", isAdmin) {
+		<article>
+			<header>
+				<h1>Edit Gateway Config</h1>
+				<p>Instance: <strong>{ instance.Name }</strong></p>
+			</header>
+			if !fromPod {
+				<div role="alert" style="padding: 0.75rem 1rem; background: var(--pico-del-color); color: var(--pico-background-color); border-radius: var(--pico-border-radius); margin-bottom: 1rem;">
+					Could not read the live config from the running pod. Showing the last config from the instance spec instead.
+					Any edits made through openclaw since creation will not be reflected.
+				</div>
+			}
+			<form method="POST" action={ templ.SafeURL("/ui/instances/" + instance.Name + "/edit-config") } onsubmit="return validateConfig()">
+				<label>
+					Gateway Config (openclaw.json)
+					<textarea name="gatewayConfig" rows="20" style="font-family: monospace; font-size: 0.85rem;" id="gatewayConfig">{ configJSON }</textarea>
+					<small id="configError" style="color: var(--pico-del-color); display: none;"></small>
+				</label>
+				<div class="grid">
+					<button type="button" class="secondary outline" onclick="formatConfig()">Format JSON</button>
+				</div>
+				<script>
+					function validateConfig() {
+						var el = document.getElementById('gatewayConfig');
+						var errEl = document.getElementById('configError');
+						try {
+							JSON.parse(el.value);
+							errEl.style.display = 'none';
+							return true;
+						} catch (e) {
+							errEl.textContent = 'Invalid JSON: ' + e.message;
+							errEl.style.display = 'block';
+							el.focus();
+							return false;
+						}
+					}
+
+					function formatConfig() {
+						var el = document.getElementById('gatewayConfig');
+						var errEl = document.getElementById('configError');
+						try {
+							var obj = JSON.parse(el.value);
+							el.value = JSON.stringify(obj, null, 2);
+							errEl.style.display = 'none';
+						} catch (e) {
+							errEl.textContent = 'Invalid JSON: ' + e.message;
+							errEl.style.display = 'block';
+						}
+					}
+				</script>
+				<footer>
+					<a href={ templ.SafeURL("/ui/instances/" + instance.Name) } role="button" class="secondary outline">Cancel</a>
+					<button type="submit">Save &amp; Restart</button>
+				</footer>
+			</form>
+		</article>
+	}
+}
