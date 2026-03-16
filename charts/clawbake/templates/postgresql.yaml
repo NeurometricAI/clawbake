@@ -56,6 +56,10 @@ spec:
               value: {{ .Values.database.internal.database }}
             - name: PGDATA
               value: /var/lib/postgresql/data/pgdata
+          {{- with .Values.database.internal.resources }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
           volumeMounts:
             - name: data
               mountPath: /var/lib/postgresql/data
@@ -65,8 +69,10 @@ spec:
                 - pg_isready
                 - -U
                 - {{ .Values.database.internal.user }}
-            initialDelaySeconds: 10
+            initialDelaySeconds: 30
             periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 5
           readinessProbe:
             exec:
               command:
@@ -75,6 +81,7 @@ spec:
                 - {{ .Values.database.internal.user }}
             initialDelaySeconds: 5
             periodSeconds: 5
+            timeoutSeconds: 3
   volumeClaimTemplates:
     - metadata:
         name: data

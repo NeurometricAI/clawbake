@@ -41,6 +41,13 @@ database:
     user: clawbake
     password: clawbake
     database: clawbake
+    resources:
+      requests:
+        cpu: 100m
+        memory: 256Mi
+      limits:
+        cpu: 500m
+        memory: 512Mi
 
 auth:
   oidc:
