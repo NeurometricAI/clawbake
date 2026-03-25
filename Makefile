@@ -1,4 +1,4 @@
-.PHONY: all build test lint generate run-server run-operator migrate docker-build k3d-import helm-install helm-install-local helm-restart-local helm-clean-local helm-template k3d-image-ls clean
+.PHONY: all build test lint generate run-server run-operator migrate docker-build k3d-import helm-install helm-install-local helm-restart-local helm-clean-local helm-template k3d-image-ls litellm-install litellm-uninstall clean
 
 # Go settings
 GOBIN := $(shell go env GOPATH)/bin
@@ -141,6 +141,27 @@ k3d-image-ls:
 ## Port forwarding (access from host via VS Code forwardPorts)
 port-forward:
 	kubectl port-forward svc/clawbake-server -n clawbake 8080:80
+
+## LiteLLM
+LITELLM_NAMESPACE ?= litellm
+
+LITELLM_VALUES_LOCAL := charts/litellm/values-local.yaml
+LITELLM_LOCAL_ARGS := $(if $(wildcard $(LITELLM_VALUES_LOCAL)),-f $(LITELLM_VALUES_LOCAL))
+LITELLM_DOTENV := $(or $(wildcard .env.local),$(wildcard .env))
+
+litellm-install:
+	$(if $(LITELLM_DOTENV),kubectl create namespace $(LITELLM_NAMESPACE) --dry-run=client -o yaml | kubectl apply -f -)
+	$(if $(LITELLM_DOTENV),kubectl create secret generic litellm-env \
+		--namespace $(LITELLM_NAMESPACE) \
+		--from-env-file=$(LITELLM_DOTENV) \
+		--dry-run=client -o yaml | kubectl apply -f -)
+	helm upgrade --install litellm oci://ghcr.io/berriai/litellm-helm \
+		--namespace $(LITELLM_NAMESPACE) --create-namespace \
+		$(LITELLM_LOCAL_ARGS) $(LITELLM_HELM_EXTRA_ARGS)
+
+litellm-uninstall:
+	-helm uninstall litellm --namespace $(LITELLM_NAMESPACE)
+	-kubectl delete namespace $(LITELLM_NAMESPACE)
 
 ## Clean
 clean:

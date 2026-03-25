@@ -1,0 +1,64 @@
+# Local development overrides for LiteLLM on k3d
+# Usage: make litellm-install
+
+replicaCount: 1
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 1Gi
+  limits:
+    cpu: "2"
+    memory: 2Gi
+
+masterkey: sk-litellm-local-dev
+
+# Load API keys from the litellm-env secret (created from charts/litellm/.env or .env.local)
+environmentSecrets:
+  - litellm-env
+
+proxy_config:
+  model_list:
+    - model_name: anthropic/claude-sonnet-4-20250514
+      litellm_params:
+        model: anthropic/claude-sonnet-4-20250514
+        api_key: os.environ/ANTHROPIC_API_KEY
+    - model_name: openai/gpt-4o
+      litellm_params:
+        model: openai/gpt-4o
+        api_key: os.environ/OPENAI_API_KEY
+  general_settings:
+    master_key: os.environ/PROXY_MASTER_KEY
+
+service:
+  type: ClusterIP
+  port: 4000
+
+ingress:
+  enabled: true
+  className: ""
+  annotations: {}
+  hosts:
+    - host: litellm.127-0-0-1.nip.io
+      paths:
+        - path: /
+          pathType: Prefix
+
+db:
+  deployStandalone: true
+
+postgresql:
+  architecture: standalone
+  auth:
+    username: litellm
+    database: litellm
+    password: litellm-local
+    postgres-password: litellm-local
+  primary:
+    resources:
+      requests:
+        cpu: 100m
+        memory: 128Mi
+      limits:
+        cpu: 250m
+        memory: 256Mi
