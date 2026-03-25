@@ -25,6 +25,13 @@
         // "forward-k3d-port": "socat TCP-LISTEN:8080,reuseaddr,fork TCP:host.docker.internal:8080 &"
     },
 
+    "postStartCommand": {
+        // The host's docker GID differs from the container's, so the mounted socket appears as root:root.
+        // Fix ownership so the vscode user (in the docker group) can access it.
+        "fix-docker-sock": "sudo chown root:docker /var/run/docker.sock",
+        "custom-commands": ["/bin/bash", "${containerWorkspaceFolder}/.devcontainer/scripts/custom-commands.sh", "run", "postStartCommand"]
+    },
+
     "postAttachCommand": {
         "custom-commands": ["/bin/bash", "${containerWorkspaceFolder}/.devcontainer/scripts/custom-commands.sh", "run", "postAttachCommand"]
     },
